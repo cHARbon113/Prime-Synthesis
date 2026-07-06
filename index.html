@@ -46,7 +46,7 @@
         .log-container {
             width: 100%;
             height: 120px;
-            background-color: #fff;
+            background-color: #fff; 
             border: 1px solid #dee2e6;
             border-radius: 6px;
             overflow-y: scroll;
@@ -64,11 +64,23 @@
             line-height: 1.3;
         }
         .log-num { color: #868e96; }
-        .log-name { font-weight: bold; }
+        .log-name { font-weight: bold; color: #495057; }
         .log-colon { text-align: center; color: #495057; }
         .log-res-ok { color: #2b8a3e; font-weight: 600; }
         .log-res-ng { color: #e03131; font-weight: 600; }
         .log-sys { color: #868e96; }
+
+        /* 🛠️ 太さを初期に戻し、二重線のスタイルを指定しました */
+        .glitch-old {
+            text-decoration: line-through;
+            text-decoration-thickness: 20%;
+            margin-right: 2px;
+        }
+        
+        .glitch-arrow {
+            margin-right: 2px;
+            font-weight: bold;
+        }
 
         .info-panel-container {
             width: 100%;
@@ -144,15 +156,19 @@
             text-align: center;
             overflow-x: hidden;
             white-space: nowrap;
+            transition: color 0.1s;
         }
         .formula-area.synthesis-mode {
-            padding-right: 75px;
+            padding-right: 125px; 
             box-sizing: border-box;
+        }
+        .formula-area.formula-grayout {
+            color: #adb5bd !important;
         }
 
         .realtime-result-area {
             position: absolute;
-            right: 10px;
+            right: 50px; 
             font-size: 18px;
             font-weight: 800;
             color: #1c7ed6;
@@ -165,11 +181,50 @@
             display: none; 
         }
 
+        .invert-btn-area {
+            position: absolute;
+            right: 6px;
+            width: 36px;
+            height: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #495057;
+            background: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+            transition: all 0.1s;
+        }
+        .invert-btn-area:disabled {
+            background: #f1f3f5 !important;
+            color: #adb5bd !important;
+            cursor: not-allowed !important;
+            border-color: #dee2e6 !important;
+            box-shadow: none !important;
+        }
+        .invert-btn-area.ready-to-use {
+            background: #fff4e6;
+            border-color: #ffd8a8;
+            color: #f76707;
+        }
+        .invert-btn-area.active {
+            background: #e67e22 !important;
+            color: #fff !important;
+            border-color: #d35400 !important;
+        }
+
         .cursor {
             color: #1c7ed6;
             font-weight: 400;
             margin-left: 2px;
             animation: blink 0.8s infinite;
+        }
+        .formula-grayout .cursor {
+            color: #adb5bd !important;
         }
         @keyframes blink {
             0%, 100% { opacity: 1; }
@@ -235,6 +290,7 @@
         <div class="input-container">
             <div id="formula-box" class="formula-area"></div>
             <div id="result-box" class="realtime-result-area">= ---</div>
+            <button id="btn-invert" class="invert-btn-area" onclick="toggleInvert()">⟳</button>
         </div>
 
         <div class="keyboard-container">
@@ -265,11 +321,10 @@
     </div>
 
     <script>
-        // 🛠️ 3つのパラメータを変更するだけで、すべて動的に連動します
         const GAME_SETTING = {
-            LIMIT_DIGITS: 4,       // 設定したい最大桁数
-            MIN_TARGET: 0,         // 最小値（例: 3桁固定にしたいなら 100 に変更）
-            MAX_TARGET: 9999,       // 最大値（例: 4桁にしたいなら 9999 に変更）
+            LIMIT_DIGITS: 4,       
+            MIN_TARGET: 0,         
+            MAX_TARGET: 9999,       
         };
 
         const CONFIG = {
@@ -290,13 +345,12 @@
         let targetPrimeFactors = []; 
         let inputStr = ""; 
         let logCounter = 1;
+        let isInvertedState = false; 
 
-        // LIMIT_DIGITS に応じた初期ゼロ文字列を生成する（3桁なら"000"）
         function getInitialZeroStr() {
             return "0".repeat(GAME_SETTING.LIMIT_DIGITS);
         }
 
-        // LIMIT_DIGITS に応じたゼロ埋め（パディング）を行う
         function formatWithDigits(num) {
             return String(num).padStart(GAME_SETTING.LIMIT_DIGITS, '0');
         }
@@ -306,11 +360,12 @@
             currentTarget = 0;
             targetPrimeFactors = [];
             inputStr = getInitialZeroStr();
+            isInvertedState = false; 
             updateStatusDisplay();
             updateUI();
         }
 
-        function appendLogRow(numText, nameText, messageText, typeClass) {
+        function appendLogRow(numText, nameText, oldVal, newVal, messageSuffix, typeClass) {
             const logBox = document.getElementById("log-box");
             const item = document.createElement("div");
             item.className = "log-item";
@@ -318,21 +373,41 @@
             const nDiv = document.createElement("div"); nDiv.className = "log-num"; nDiv.innerText = numText;
             const nmDiv = document.createElement("div"); nmDiv.className = "log-name"; nmDiv.innerText = nameText;
             const cDiv = document.createElement("div"); cDiv.className = "log-colon"; cDiv.innerText = ":";
-            const mDiv = document.createElement("div"); mDiv.className = `log-msg ${typeClass}`; mDiv.innerText = messageText;
+            
+            const mDiv = document.createElement("div"); 
+            mDiv.className = `log-msg ${typeClass}`; 
 
-            item.appendChild(nDiv); item.appendChild(nmDiv); item.appendChild(cDiv); item.appendChild(mDiv);
+            if (oldVal !== null && oldVal !== newVal) {
+                const sTag = document.createElement("span");
+                sTag.className = "glitch-old";
+                sTag.innerText = oldVal;
+                
+                const arrowTag = document.createElement("span");
+                arrowTag.className = "glitch-arrow";
+                arrowTag.innerText = "...";
+
+                mDiv.appendChild(sTag);
+                mDiv.appendChild(arrowTag);
+            }
+
+            const textNode = document.createTextNode(`${newVal}${messageSuffix}`);
+            mDiv.appendChild(textNode);
+
+            item.appendChild(nDiv); item.appendChild(nmDiv); item.appendChild(cDiv);
+            item.appendChild(mDiv);
             logBox.appendChild(item);
             logBox.scrollTop = logBox.scrollHeight;
             logCounter++;
         }
 
-        function logGame(sender, value, numberType, isSuccess) {
-            const suffix = isSuccess ? "です" : "ではありません";
-            appendLogRow(`[${logCounter}]`, sender, `${value}は${numberType}${suffix}`, isSuccess ? "log-res-ok" : "log-res-ng");
+        function logGame(sender, value, numberType, isSuccess, oldVal = null) {
+            const suffix = isSuccess ? "は" + numberType + "です" : "は" + numberType + "ではありません";
+            const cls = isSuccess ? "log-res-ok" : "log-res-ng";
+            appendLogRow(`[${logCounter}]`, sender, oldVal, value, suffix, cls);
         }
 
         function logSystemNotice(text) {
-            appendLogRow(`[${logCounter}]`, "システム", text, "log-sys");
+            appendLogRow(`[${logCounter}]`, "システム", null, text, "", "log-sys");
         }
 
         function updateStatusDisplay() {
@@ -429,28 +504,30 @@
             return Math.floor(Math.random() * range) + GAME_SETTING.MIN_TARGET;
         }
 
-        function processNextTarget(num, sender) {
+        function processNextTarget(num, sender, firstOldVal = null) {
             let currentCheckNum = num;
             let currentSender = sender;
+            let initialOldVal = firstOldVal; 
 
             while (true) {
-                // 🛠️ 範囲外（小さすぎる、または大きすぎる）の場合は、即座に範囲内の乱数で引き直す
                 if (currentCheckNum < GAME_SETTING.MIN_TARGET || currentCheckNum > GAME_SETTING.MAX_TARGET) {
                     currentCheckNum = getRandomTarget();
                     currentSender = "システム";
+                    initialOldVal = null; 
                     continue;
                 }
 
                 const formattedStr = formatWithDigits(currentCheckNum);
 
                 if (isComposite(currentCheckNum)) {
-                    logGame(currentSender, formattedStr, "合成数", true);
+                    logGame(currentSender, formattedStr, "合成数", true, initialOldVal);
                     currentTarget = currentCheckNum;
                     break;
                 } else {
-                    logGame(currentSender, formattedStr, "合成数", false);
+                    logGame(currentSender, formattedStr, "合成数", false, initialOldVal);
                     currentCheckNum = getRandomTarget();
                     currentSender = "システム";
+                    initialOldVal = null; 
                 }
             }
 
@@ -488,6 +565,7 @@
         function updateUI() {
             const formulaBox = document.getElementById("formula-box");
             const resultBox = document.getElementById("result-box");
+            const invertBtn = document.getElementById("btn-invert");
             
             formulaBox.innerHTML = ""; 
             formulaBox.appendChild(document.createTextNode(inputStr || ""));
@@ -496,20 +574,51 @@
             cursorSpan.className = "cursor"; cursorSpan.innerText = "|";
             formulaBox.appendChild(cursorSpan);
 
-            if (currentMode === "SYNTHESIS") {
-                formulaBox.className = "formula-area synthesis-mode";
-                resultBox.style.display = "block";
-                let calcVal = calculateLeftToRight(inputStr);
-                resultBox.innerText = `= ${formatWithDigits(Math.abs(calcVal))}`;
-            } else {
-                formulaBox.className = "formula-area";
-                resultBox.style.display = "none"; 
-            }
-
             const usedIndices = getUsedCardsIndices(inputStr, targetPrimeFactors);
             renderInfoPanel(usedIndices);
 
             const { isLastCharSign, hasUsedMultiDiv, currentWritingStr } = analyzeFormula(inputStr);
+
+            if (currentMode === "SYNTHESIS") {
+                formulaBox.className = "formula-area synthesis-mode";
+                resultBox.style.display = "block";
+                invertBtn.style.display = "flex"; 
+
+                let calcVal = calculateLeftToRight(inputStr);
+                let absoluteVal = Math.abs(calcVal);
+
+                invertBtn.classList.remove("ready-to-use", "active");
+                formulaBox.classList.remove("formula-grayout");
+
+                const isReady = (usedIndices.length === targetPrimeFactors.length) && !isLastCharSign;
+                invertBtn.disabled = !isReady;
+
+                if (isReady) {
+                    if (isInvertedState) {
+                        absoluteVal = GAME_SETTING.MAX_TARGET - absoluteVal;
+                        invertBtn.classList.add("active");
+                        invertBtn.innerText = "⟲"; 
+                        formulaBox.classList.add("formula-grayout"); 
+                    } else {
+                        invertBtn.classList.add("ready-to-use"); 
+                        invertBtn.innerText = "⟳"; 
+                    }
+                } else {
+                    invertBtn.innerText = "⟳";
+                    if (isInvertedState) {
+                        isInvertedState = false;
+                        updateUI();
+                        return;
+                    }
+                }
+                
+                resultBox.innerText = `= ${formatWithDigits(absoluteVal)}`;
+            } else {
+                formulaBox.className = "formula-area";
+                formulaBox.classList.remove("formula-grayout");
+                resultBox.style.display = "none"; 
+                invertBtn.style.display = "none"; 
+            }
 
             const enterBtn = document.getElementById("btn-enter");
             if (currentMode === "SYNTHESIS") {
@@ -556,7 +665,8 @@
                 const btn = document.getElementById(`btn-${num}`);
 
                 if (currentMode === "SETUP") {
-                    btn.disabled = (inputStr !== getInitialZeroStr() && inputStr.replace(/^0+/, '').length >= GAME_SETTING.LIMIT_DIGITS);
+                    const currentLen = inputStr.replace(/^0+/, '').length;
+                    btn.disabled = (inputStr !== getInitialZeroStr() && currentLen >= GAME_SETTING.LIMIT_DIGITS);
                 } 
                 else if (currentMode === "SYNTHESIS") {
                     let availableFactors = [...targetPrimeFactors];
@@ -605,6 +715,11 @@
         function pressPass() { logSystemNotice("パスが選択されました"); }
         function pressSurrender() { if(confirm("降参しますか？")) location.reload(); }
 
+        function toggleInvert() {
+            isInvertedState = !isInvertedState;
+            updateUI();
+        }
+
         function pressEnter() {
             if (currentMode === "SETUP") {
                 let num = parseInt(inputStr, 10);
@@ -630,16 +745,19 @@
             } 
             else if (currentMode === "SYNTHESIS") {
                 let resultVal = calculateLeftToRight(inputStr);
-                let absoluteVal = Math.abs(resultVal);
+                let originalAbsoluteVal = formatWithDigits(Math.abs(resultVal)); 
+                let finalAbsoluteVal = Math.abs(resultVal);
 
-                if (absoluteVal !== currentTarget) {
-                    // 🛠️ 反転は行わず、そのまま次のターゲット生成ルーチンへ。
-                    //（processNextTarget内で自動的に範囲チェックされ、外れていればシステムが乱数で引き直します）
-                    processNextTarget(absoluteVal, "プレイヤー");
+                if (isInvertedState) {
+                    finalAbsoluteVal = GAME_SETTING.MAX_TARGET - finalAbsoluteVal;
+                }
+
+                if (finalAbsoluteVal !== currentTarget) {
+                    processNextTarget(finalAbsoluteVal, "プレイヤー", isInvertedState ? originalAbsoluteVal : null);
                     currentMode = "DECOMPOSE"; 
                     inputStr = "";
                 } else {
-                    logGame("プレイヤー", formatWithDigits(absoluteVal), "同じ数", true);
+                    processNextTarget(finalAbsoluteVal, "プレイヤー", isInvertedState ? originalAbsoluteVal : null);
                     resetToSetup(); 
                     return;
                 }
