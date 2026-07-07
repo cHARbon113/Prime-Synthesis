@@ -70,7 +70,6 @@
         .log-res-ng { color: #e03131; font-weight: 600; }
         .log-sys { color: #868e96; }
 
-        /* 🛠️ 太さを初期に戻し、二重線のスタイルを指定しました */
         .glitch-old {
             text-decoration: line-through;
             text-decoration-thickness: 20%;
@@ -261,12 +260,6 @@
             box-shadow: none !important;
         }
         button:not(:disabled):active { background: #f1f3f5; }
-
-        .btn-multidiv-active {
-            background: #fff4e6;
-            border-color: #ffd8a8;
-            color: #f76707;
-        }
     </style>
 </head>
 <body>
@@ -489,14 +482,10 @@
             const lastChar = str.slice(-1);
             const isLastCharSign = ["＋", "－", "×", "÷"].includes(lastChar);
             
-            const timesCount = (str.match(/×/g) || []).length;
-            const divCount = (str.match(/÷/g) || []).length;
-            const hasUsedMultiDiv = (timesCount + divCount) > 0;
-
             const tokens = str.match(/\d+$/);
             const currentWritingStr = tokens ? tokens[0] : "";
 
-            return { isLastCharSign, hasUsedMultiDiv, currentWritingStr };
+            return { isLastCharSign, currentWritingStr };
         }
 
         function getRandomTarget() {
@@ -510,7 +499,8 @@
             let initialOldVal = firstOldVal; 
 
             while (true) {
-                if (currentCheckNum < GAME_SETTING.MIN_TARGET || currentCheckNum > GAME_SETTING.MAX_TARGET) {
+                // 🛠️ 範囲外、または【元のお題と同じ数字】になった場合は、システムがランダムな数を再選択してループ
+                if (currentCheckNum < GAME_SETTING.MIN_TARGET || currentCheckNum > GAME_SETTING.MAX_TARGET || currentCheckNum === currentTarget) {
                     currentCheckNum = getRandomTarget();
                     currentSender = "システム";
                     initialOldVal = null; 
@@ -519,7 +509,13 @@
 
                 const formattedStr = formatWithDigits(currentCheckNum);
 
-                if (isComposite(currentCheckNum)) {
+                if (num === currentTarget) {
+                    // 💡 プレイヤーが元と同じ数を合成した場合は「同じ数」としてログ出力
+                    logGame(currentSender, formattedStr, "同じ数", true, initialOldVal);
+                    currentCheckNum = getRandomTarget();
+                    currentSender = "システム";
+                    initialOldVal = null;
+                } else if (isComposite(currentCheckNum)) {
                     logGame(currentSender, formattedStr, "合成数", true, initialOldVal);
                     currentTarget = currentCheckNum;
                     break;
@@ -577,7 +573,7 @@
             const usedIndices = getUsedCardsIndices(inputStr, targetPrimeFactors);
             renderInfoPanel(usedIndices);
 
-            const { isLastCharSign, hasUsedMultiDiv, currentWritingStr } = analyzeFormula(inputStr);
+            const { isLastCharSign, currentWritingStr } = analyzeFormula(inputStr);
 
             if (currentMode === "SYNTHESIS") {
                 formulaBox.className = "formula-area synthesis-mode";
@@ -634,7 +630,6 @@
             document.querySelectorAll(".sign-btn").forEach(btn => {
                 const btnSign = btn.getAttribute("data-sign");
                 
-                btn.classList.remove("btn-multidiv-active");
                 if (btnSign === "×") btn.innerText = "×";
                 if (btnSign === "÷") btn.innerText = "÷";
 
@@ -643,20 +638,8 @@
                 } else if (currentMode === "DECOMPOSE") {
                     btn.disabled = (btnSign !== "×" || isLastCharSign);
                 } else if (currentMode === "SYNTHESIS") {
-                    if (!isSignAllowed) {
-                        btn.disabled = true;
-                    } else if (btnSign === "×" || btnSign === "÷") {
-                        if (hasUsedMultiDiv) {
-                            btn.innerText = `${btnSign} (⓪)`;
-                            btn.disabled = true; 
-                        } else {
-                            btn.classList.add("btn-multidiv-active");
-                            btn.innerText = `${btnSign} (①)`;
-                            btn.disabled = false;
-                        }
-                    } else {
-                        btn.disabled = false;
-                    }
+                    // 🛠️ ×や÷の回数によるロックを完全撤廃し、他の記号（＋－）と同じ条件で常に入力可能に
+                    btn.disabled = !isSignAllowed;
                 }
             });
 
@@ -752,15 +735,10 @@
                     finalAbsoluteVal = GAME_SETTING.MAX_TARGET - finalAbsoluteVal;
                 }
 
-                if (finalAbsoluteVal !== currentTarget) {
-                    processNextTarget(finalAbsoluteVal, "プレイヤー", isInvertedState ? originalAbsoluteVal : null);
-                    currentMode = "DECOMPOSE"; 
-                    inputStr = "";
-                } else {
-                    processNextTarget(finalAbsoluteVal, "プレイヤー", isInvertedState ? originalAbsoluteVal : null);
-                    resetToSetup(); 
-                    return;
-                }
+                // 🛠️ 条件分岐を撤廃し一本化。同じ数でも違う数でも、結果をそのまま投げ込むだけ
+                processNextTarget(finalAbsoluteVal, "プレイヤー", isInvertedState ? originalAbsoluteVal : null);
+                currentMode = "DECOMPOSE"; 
+                inputStr = "";
             }
 
             updateStatusDisplay();
