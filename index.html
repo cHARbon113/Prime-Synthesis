@@ -551,30 +551,52 @@
             targetPrimeFactors = computePrimeFactors(currentTarget);
         }
 
-        // 💡 素因数カードを直接タップしたときのトグル処理
+        // 💡 どこを押しても左詰めになる賢いカードトグル処理
         function clickPrimeCard(factor, index, isUsed) {
             if (currentMode !== "SYNTHESIS") return;
 
-            // 💡 すでにグレーアウト（使用済み）のカードをタップした場合の取り消し処理
+            const factorStr = String(factor);
+
+            // 💡【消去処理】すでにグレーアウト（使用済み）のカードをタップした場合
             if (isUsed) {
-                const factorStr = String(factor);
-                
-                // 1. まず末尾の数字部分を消す
-                if (inputStr.endsWith(factorStr)) {
-                    inputStr = inputStr.slice(0, -factorStr.length);
-                    
-                    // 2. 💡【新規追加】数字を消した結果、末尾に残った「直前の計算記号」も一緒に巻き込んで消す
-                    const lastChar = inputStr.slice(-1);
-                    if (["＋", "－", "×", "÷"].includes(lastChar)) {
-                        inputStr = inputStr.slice(0, -1);
+                const tokens = inputStr.match(/(\d+|[＋－×÷²])/g);
+                if (!tokens) return;
+
+                // その数字の中で、今回タップされたカードが何番目のものかを計算
+                const targetFactorIndices = [];
+                targetPrimeFactors.forEach((f, idx) => {
+                    if (f === factor) targetFactorIndices.push(idx);
+                });
+                const cardRank = targetFactorIndices.indexOf(index);
+
+                let targetTokenIndex = -1;
+                let currentRank = 0;
+                for (let i = 0; i < tokens.length; i++) {
+                    if (tokens[i] === factorStr) {
+                        if (currentRank === cardRank) {
+                            targetTokenIndex = i;
+                            break;
+                        }
+                        currentRank++;
                     }
-                    
+                }
+
+                if (targetTokenIndex !== -1) {
+                    if (targetTokenIndex > 0 && ["＋", "－", "×", "÷"].includes(tokens[targetTokenIndex - 1])) {
+                        tokens.splice(targetTokenIndex - 1, 2);
+                    } else if (targetTokenIndex < tokens.length - 1 && ["＋", "－", "×", "÷"].includes(tokens[targetTokenIndex + 1])) {
+                        tokens.splice(targetTokenIndex, 2);
+                    } else {
+                        tokens.splice(targetTokenIndex, 1);
+                    }
+                    inputStr = tokens.join("");
                     updateUI();
                 }
                 return;
             }
 
-            // 未使用カードをタップして数式に追加するロジック
+            // 💡【追加処理】青い（未使用）カードをタップした場合
+            // 奥の同じ数字カードを押されたとしても、数式上は手前（左側）の未使用カードを消費したことに偽装・統合します
             const { isLastCharSign, currentWritingStr } = analyzeFormula(inputStr);
             let availableFactors = [...targetPrimeFactors];
             const usedIndices = getUsedCardsIndices(inputStr, targetPrimeFactors);
@@ -585,14 +607,14 @@
 
             if (currentWritingStr === "") {
                 if (inputStr.slice(-1) !== "²") {
-                    canInput = availableFactors.some(f => f !== null && String(f).startsWith(String(factor)));
+                    canInput = availableFactors.some(f => f !== null && String(f).startsWith(factorStr));
                 }
             } else {
                 canInput = availableFactors.some(f => f !== null && String(f).startsWith(nextTargetStr));
             }
 
             if (canInput) {
-                inputStr += String(factor);
+                inputStr += factorStr;
                 updateUI();
             }
         }
@@ -611,18 +633,32 @@
                 contentEl.className = "cards-wrapper";
                 contentEl.innerHTML = "";
 
+                // 💡 今回のコア！表示用の使用中・未使用フラグを「左詰め」でシミュレートする
+                // プレイヤーがどの「3」を押したかに関わらず、数式内の数に応じて左から綺麗にグレーアウトさせます
                 let tempUsed = [...usedIndices];
+                
+                // 正確に「左から順に何個使われているか」をマッピングするための作業用配列
+                let countsOfFactorInFormula = {};
+                const tokens = inputStr.match(/\d+/g) || [];
+                tokens.forEach(numStr => {
+                    const val = parseInt(numStr, 10);
+                    countsOfFactorInFormula[val] = (countsOfFactorInFormula[val] || 0) + 1;
+                });
+
                 targetPrimeFactors.forEach((factor, idx) => {
                     const card = document.createElement("div");
-                    const isUsed = tempUsed.includes(idx);
+                    
+                    // 数式の中にこの数字がまだ必要数残っていれば、このカードは「使用中」にする
+                    let isUsed = false;
+                    if (countsOfFactorInFormula[factor] && countsOfFactorInFormula[factor] > 0) {
+                        isUsed = true;
+                        countsOfFactorInFormula[factor]--;
+                    }
+
                     card.className = "prime-card" + (isUsed ? " used" : "");
                     card.innerText = factor;
                     
                     card.onclick = () => clickPrimeCard(factor, idx, isUsed);
-
-                    if (isUsed) {
-                        tempUsed.splice(tempUsed.indexOf(idx), 1);
-                    }
                     contentEl.appendChild(card);
                 });
             }
