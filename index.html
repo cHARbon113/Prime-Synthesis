@@ -59,7 +59,7 @@
         
         .log-item {
             display: grid;
-            grid-template-columns: 35px 65px 15px 1fr; 
+            grid-template-columns: 42px 65px 15px 1fr; /* 💡 連番[001]が綺麗に収まるよう 42px に拡張 */
             margin-bottom: 4px;
             line-height: 1.3;
         }
@@ -335,7 +335,7 @@
 
         let currentMode = "SETUP"; 
         let currentTarget = 0;
-        let previousTarget = null; // 💡 1世代前（1手前）のお題を記憶する変数
+        let previousTarget = null; // 💡 1世代前のお題を記憶する変数
         let targetPrimeFactors = []; 
         let inputStr = ""; 
         let logCounter = 1;
@@ -352,7 +352,7 @@
         function resetToSetup() {
             currentMode = "SETUP";
             currentTarget = 0;
-            previousTarget = null; // 💡 リセット
+            previousTarget = null; 
             targetPrimeFactors = [];
             inputStr = getInitialZeroStr();
             isInvertedState = false; 
@@ -398,11 +398,13 @@
         function logGame(sender, value, numberType, isSuccess, oldVal = null) {
             const suffix = isSuccess ? "は" + numberType + "です" : "は" + numberType + "ではありません";
             const cls = isSuccess ? "log-res-ok" : "log-res-ng";
-            appendLogRow(`[${logCounter}]`, sender, oldVal, value, suffix, cls);
+            // 💡 連番を [001] 形式の3桁埋めに統一
+            appendLogRow(`[${String(logCounter).padStart(3, '0')}]`, sender, oldVal, value, suffix, cls);
         }
 
         function logSystemNotice(text) {
-            appendLogRow(`[${logCounter}]`, "システム", null, text, "", "log-sys");
+            // 💡 連番を [001] 形式の3桁埋めに統一
+            appendLogRow(`[${String(logCounter).padStart(3, '0')}]`, "システム", null, text, "", "log-sys");
         }
 
         function updateStatusDisplay() {
@@ -434,7 +436,6 @@
             return result;
         }
 
-        // 合成数判定
         function isComposite(num) {
             if (num <= 1) return false;
             for (let i = 2; i * i <= num; i++) {
@@ -443,7 +444,6 @@
             return false;
         }
 
-        // 素因数分解の計算
         function computePrimeFactors(num) {
             let factors = [];
             let d = 2;
@@ -497,24 +497,24 @@
             return Math.floor(Math.random() * range) + GAME_SETTING.MIN_TARGET;
         }
 
-        // お題管理・選出ロジック（完全に一本化）
+        // お題管理・自動生成統合ロジック
         function processNextTarget(num, sender, firstOldVal = null) {
             let currentCheckNum = num;
             let currentSender = sender;
             let initialOldVal = firstOldVal; 
 
             while (true) {
-                // 現在のお題、または1世代前（1手前）のお題と重複、もしくは範囲外の場合はシステム選出へ
+                // 💡 現在のお題、または1手前のお題と重複、もしくは範囲外の場合はシステム自動選出へ
                 if (currentCheckNum < GAME_SETTING.MIN_TARGET || 
                     currentCheckNum > GAME_SETTING.MAX_TARGET || 
                     currentCheckNum === currentTarget || 
                     currentCheckNum === previousTarget) {
                     
-                    // 💡 プレイヤーが同じ数（現在または手前）を作って弾かれた際、メッセージを統一してログ出力
+                    // 💡 プレイヤーが同じ数を作って弾かれた際、「同じ数です」のログ出力に一本化
                     if (sender === "プレイヤー" && (currentCheckNum === currentTarget || currentCheckNum === previousTarget)) {
                         const formattedStr = formatWithDigits(num);
-                        logGame("プレイヤー", formattedStr, "同じ数", true, initialOldVal);
-                        sender = "システム"; // 1回ログを出したら次からは出さない
+                        appendLogRow(`[${String(logCounter).padStart(3, '0')}]`, "プレイヤー", initialOldVal, formattedStr, "は同じ数です", "log-res-ok");
+                        sender = "システム"; 
                     }
 
                     currentCheckNum = getRandomTarget();
@@ -528,7 +528,7 @@
                 if (isComposite(currentCheckNum)) {
                     logGame(currentSender, formattedStr, "合成数", true, initialOldVal);
                     
-                    // 次のターンのループ制限のため、現在のお題を1手前（previousTarget）に退避して更新
+                    // 次ターンの往復ループ防止用に、現在のお題を1手前（previousTarget）に記憶してから更新
                     previousTarget = currentTarget;
                     currentTarget = currentCheckNum;
                     break;
@@ -633,7 +633,8 @@
             if (currentMode === "SYNTHESIS") {
                 enterBtn.disabled = (usedIndices.length < targetPrimeFactors.length) || isLastCharSign;
             } else {
-                enterBtn.disabled = (inputStr === "" || inputStr === getInitialZeroStr() || isLastCharSign);
+                // 💡 お題設定フェーズ(SETUP)なら、0000状態でも最後が記号でなければ決定を押せるように修正
+                enterBtn.disabled = (inputStr === "" || isLastCharSign);
             }
 
             const isSignAllowed = (usedIndices.length > 0) && 
@@ -651,7 +652,7 @@
                 } else if (currentMode === "DECOMPOSE") {
                     btn.disabled = (btnSign !== "×" || isLastCharSign);
                 } else if (currentMode === "SYNTHESIS") {
-                    // ×や÷の回数によるロックを完全撤廃し、他の記号（＋－）と同じ条件で常に入力可能に
+                    // 💡 ×や÷の制限ロックを撤廃。他の記号と同じ条件で常に使用可能
                     btn.disabled = !isSignAllowed;
                 }
             });
@@ -667,7 +668,7 @@
                 else if (currentMode === "SYNTHESIS") {
                     let availableFactors = [...targetPrimeFactors];
                     usedIndices.forEach(i => availableFactors[i] = null);
-                    availableFactors = availableFactors.filter(v => f !== null);
+                    availableFactors = availableFactors.filter(v => v !== null);
 
                     const nextTargetStr = currentWritingStr + num;
                     let canInput = false;
@@ -748,7 +749,7 @@
                     finalAbsoluteVal = GAME_SETTING.MAX_TARGET - finalAbsoluteVal;
                 }
 
-                // 計算結果をそのまま一本化された処理へ流し込むだけ
+                // 💡 お題設定に戻る分岐コードは完全消去。結果をそのまま自動ループ処理へ流し込むだけ
                 processNextTarget(finalAbsoluteVal, "プレイヤー", isInvertedState ? originalAbsoluteVal : null);
                 currentMode = "DECOMPOSE"; 
                 inputStr = "";
