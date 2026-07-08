@@ -172,7 +172,6 @@
             display: none; 
             white-space: nowrap;
         }
-        /* 5桁目以降の薄暗い文字用 */
         .result-overflow {
             font-size: 14px;
             color: #adb5bd;
@@ -191,6 +190,7 @@
             50% { opacity: 0; }
         }
 
+        /* 💡 5列グリッドの正しい定義 */
         .keyboard-container {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -651,7 +651,6 @@
 
             const { isLastCharSign, currentWritingStr } = analyzeFormula(inputStr);
 
-            // 右上ボタンの文言表示切り替え
             if (currentMode === "SETUP" || currentMode === "SYNTHESIS") {
                 dynamicBtn.innerText = "パス";
                 dynamicBtn.disabled = false;
@@ -750,7 +749,6 @@
             }
         }
 
-        // 右上ボタンの元々のパス仕様（ログへの出力のみ）
         function pressDynamic() {
             if (currentMode === "SETUP" || currentMode === "SYNTHESIS") {
                 logSystemNotice("パスが選択されました");
