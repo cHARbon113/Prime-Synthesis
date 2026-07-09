@@ -144,6 +144,7 @@
             min-height: 42px;
             display: flex;
             align-items: center;
+            justify-content: space-between; /* 左右の要素のバランスをとる */
             position: relative;
             overflow: hidden;
         }
@@ -155,7 +156,7 @@
             letter-spacing: 0.5px;
             flex-grow: 1;
             text-align: left;
-            padding-left: 4px;
+            padding-left: 6px;
             overflow-x: auto; 
             white-space: nowrap;
             transition: color 0.1s;
@@ -166,19 +167,19 @@
             color: #adb5bd !important;
         }
 
-        /* 計算表示・反転ボタン群を格納する一体型右側固定コンテナ（幅172pxに完全固定） */
+        /* 一体型右側固定コンテナ：全体のバランスが崩れないよう配置 */
         .right-fixed-panel {
             display: flex;
             align-items: center;
+            justify-content: flex-end;
             flex-shrink: 0;
             width: 172px;
             height: 30px;
-            margin-left: 4px;
             box-sizing: border-box;
         }
 
         .realtime-result-wrapper {
-            display: none; /* 初期は非表示、合成フェーズで flex に */
+            display: none; 
             align-items: center;
             flex-shrink: 0;
             width: 130px; 
@@ -215,7 +216,6 @@
         }
         .result-sub-scroll::-webkit-scrollbar { display: none; }
 
-        /* 反転ボタン：幅を36pxに完全固定。表示切り替えは display ではなく visibility で行うことでガタつきを根絶 */
         .invert-btn-area {
             width: 36px;
             height: 30px;
@@ -233,7 +233,7 @@
             transition: all 0.1s;
             flex-shrink: 0;
             margin-left: 6px;
-            visibility: hidden; /* デフォルトは場所だけ確保して隠す */
+            visibility: hidden; 
         }
         .invert-btn-area:disabled {
             background: #f1f3f5 !important;
@@ -809,7 +809,6 @@
 
                 const isReady = (usedIndices.length === targetPrimeFactors.length) && !isLastCharSign && !isLastCharJoin;
 
-                /* 反転ボタンの表示制御に visibility を使用してガタつきを根絶 */
                 if (GAME_SETTING.ENABLE_INVERT && !isOverDigits) {
                     invertBtn.style.visibility = "visible"; 
                 } else {
@@ -883,7 +882,7 @@
 
                     let availableFactors = [...targetPrimeFactors];
                     usedIndices.forEach(i => availableFactors[i] = null);
-                    availableFactors = availableFactors.filter(v => v !== null);
+                    availableFactors = availableFactors.filter(v => f !== null);
 
                     let canInput = false;
                     if (isLastCharJoin) {
