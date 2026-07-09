@@ -148,7 +148,6 @@
             overflow: hidden;
         }
 
-        /* 文字サイズを大きめ（元サイズ付近）に戻しつつ、スクロールに対応 */
         .formula-area {
             font-size: 20px;
             font-weight: 700;
@@ -167,17 +166,25 @@
             color: #adb5bd !important;
         }
 
-        /* 結果エリアの親パーツ：幅を130pxに完全固定（内訳：青枠80px ＋ 溢れ枠45px ＋ マージン等） */
-        .realtime-result-wrapper {
-            display: none;
+        /* 計算表示・反転ボタン群を格納する一体型右側固定コンテナ（幅172pxに完全固定） */
+        .right-fixed-panel {
+            display: flex;
             align-items: center;
             flex-shrink: 0;
-            width: 130px; 
+            width: 172px;
+            height: 30px;
             margin-left: 4px;
             box-sizing: border-box;
         }
 
-        /* 青枠：4桁(= 0000)が絶対にブレずに固定されるよう幅を80pxに固定 */
+        .realtime-result-wrapper {
+            display: none; /* 初期は非表示、合成フェーズで flex に */
+            align-items: center;
+            flex-shrink: 0;
+            width: 130px; 
+            box-sizing: border-box;
+        }
+
         .result-blue-box {
             background: #e7f5ff;
             border: 1px solid #a5d8ff;
@@ -195,7 +202,6 @@
             box-sizing: border-box;
         }
 
-        /* はみ出た桁数表示：ちょうど4桁分くらい（45px）が見える固定サイズ。超えたらスクロール */
         .result-sub-scroll {
             color: #adb5bd;
             font-size: 16px;
@@ -209,6 +215,7 @@
         }
         .result-sub-scroll::-webkit-scrollbar { display: none; }
 
+        /* 反転ボタン：幅を36pxに完全固定。表示切り替えは display ではなく visibility で行うことでガタつきを根絶 */
         .invert-btn-area {
             width: 36px;
             height: 30px;
@@ -219,13 +226,14 @@
             border: 1px solid #ced4da;
             border-radius: 4px;
             cursor: pointer;
-            display: none;
+            display: flex;
             align-items: center;
             justify-content: center;
             touch-action: manipulation;
             transition: all 0.1s;
             flex-shrink: 0;
             margin-left: 6px;
+            visibility: hidden; /* デフォルトは場所だけ確保して隠す */
         }
         .invert-btn-area:disabled {
             background: #f1f3f5 !important;
@@ -278,7 +286,6 @@
             user-select: none;
             -webkit-user-select: none;
         }
-        /* 大技ボタンの文字サイズ調整 */
         #btn-opt1, #btn-opt2 {
             font-size: 11px;
         }
@@ -315,11 +322,13 @@
 
         <div class="input-container">
             <div id="formula-box" class="formula-area"></div>
-            <div id="result-wrapper" class="realtime-result-wrapper">
-                <div id="result-blue-box" class="result-blue-box">= ---</div>
-                <div id="result-sub-scroll" class="result-sub-scroll"></div>
+            <div class="right-fixed-panel">
+                <div id="result-wrapper" class="realtime-result-wrapper">
+                    <div id="result-blue-box" class="result-blue-box">= ---</div>
+                    <div id="result-sub-scroll" class="result-sub-scroll"></div>
+                </div>
+                <button id="btn-invert" class="invert-btn-area" onclick="toggleInvert()">⟳</button>
             </div>
-            <button id="btn-invert" class="invert-btn-area" onclick="toggleInvert()">⟳</button>
         </div>
 
         <div class="keyboard-container">
@@ -745,10 +754,9 @@
 
             const { isLastCharSign, isLastCharPower, isLastCharJoin, currentWritingStr } = analyzeFormula(inputStr);
 
-            // 「直前の数」がカードとして成立しているか、または「すでに二乗されているか」を判定
             let isCardCompleted = false;
             if (isLastCharPower) {
-                isCardCompleted = true; // 二乗された直後もカード確定状態として扱う（不具合修正）
+                isCardCompleted = true; 
             } else if (currentWritingStr !== "") {
                 const parsedNum = parseInt(currentWritingStr, 10);
                 isCardCompleted = targetPrimeFactors.includes(parsedNum);
@@ -757,7 +765,6 @@
             if (currentMode === "SYNTHESIS") {
                 resultWrapper.style.display = "flex";
                 
-                // ボタン表記のビジュアルを分かりやすくアップデート
                 opt1Btn.innerText = `□_□ ${hasJoinMode ? "①" : "⓪"}`;
                 opt2Btn.innerText = `□² ${hasPowerOfTwo ? "①" : "⓪"}`;
 
@@ -771,7 +778,6 @@
                     resultBlueBox.innerText = `= ${fullResultStr.slice(0, 4)}`;
                     resultSubScroll.innerText = fullResultStr.slice(4);
                     resultSubScroll.style.display = "block";
-                    // 溢れ桁が追加されたら右端に自動スクロール
                     resultSubScroll.scrollLeft = 0;
                 } else {
                     resultBlueBox.innerText = `= ${fullResultStr}`;
@@ -784,7 +790,6 @@
 
                 const hasUnusedCards = usedIndices.length < targetPrimeFactors.length;
                 
-                // 二乗の直後は連続結合不可
                 if (hasJoinMode && isCardCompleted && hasUnusedCards && !isLastCharPower) {
                     opt1Btn.classList.add("ready-to-use");
                     opt1Btn.disabled = false;
@@ -792,7 +797,6 @@
                     opt1Btn.disabled = !hasJoinMode || !isCardCompleted || !hasUnusedCards || isLastCharPower;
                 }
 
-                // 二乗の直後は連続二乗不可
                 if (hasPowerOfTwo && isCardCompleted && !isLastCharPower) {
                     opt2Btn.classList.add("ready-to-use");
                     opt2Btn.disabled = false;
@@ -805,10 +809,11 @@
 
                 const isReady = (usedIndices.length === targetPrimeFactors.length) && !isLastCharSign && !isLastCharJoin;
 
+                /* 反転ボタンの表示制御に visibility を使用してガタつきを根絶 */
                 if (GAME_SETTING.ENABLE_INVERT && !isOverDigits) {
-                    invertBtn.style.display = "flex"; 
+                    invertBtn.style.visibility = "visible"; 
                 } else {
-                    invertBtn.style.display = "none"; 
+                    invertBtn.style.visibility = "hidden"; 
                     if (isInvertedState) {
                         isInvertedState = false;
                         updateUI();
@@ -834,7 +839,7 @@
             } else {
                 formulaBox.className = "formula-area";
                 resultWrapper.style.display = "none"; 
-                invertBtn.style.display = "none"; 
+                invertBtn.style.visibility = "hidden"; 
 
                 opt1Btn.innerText = "降参"; opt1Btn.disabled = false;
                 opt2Btn.innerText = "パス"; opt2Btn.disabled = false;
@@ -842,7 +847,6 @@
                 opt2Btn.classList.remove("ready-to-use");
             }
 
-            // 決定ボタン
             const enterBtn = document.getElementById("btn-enter");
             if (currentMode === "SYNTHESIS") {
                 enterBtn.disabled = (usedIndices.length < targetPrimeFactors.length) || isLastCharSign || isLastCharJoin;
@@ -850,7 +854,6 @@
                 enterBtn.disabled = (inputStr === "" || isLastCharSign);
             }
 
-            // 演算符号
             const isSignAllowed = isCardCompleted && (usedIndices.length < targetPrimeFactors.length);
 
             document.querySelectorAll(".sign-btn").forEach(btn => {
@@ -864,7 +867,6 @@
                 }
             });
 
-            // テンキー数字
             const numButtons = ["0","1","2","3","4","5","6","7","8","9"];
             numButtons.forEach(num => {
                 const btn = document.getElementById(`btn-${num}`);
