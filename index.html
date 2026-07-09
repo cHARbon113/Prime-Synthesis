@@ -3,7 +3,1030 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>素因数合成ゲーム</<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>素因数合成ゲーム</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            max-width: 360px;
+            margin: 5px auto;
+            padding: 10px;
+            background-color: #f8f9fa;
+            color: #212529;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 20px;
+            margin: 5px 0 10px 0;
+            color: #1a1a1a;
+            letter-spacing: 1px;
+        }
+
+        .game-window {
+            width: 320px;
+            margin: 0 auto;
+        }
+
+        .status-container {
+            width: 100%;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-align: center;
+            background: #fff;
+            padding: 8px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+        #phase-display { font-weight: bold; color: #2c3e50; font-size: 13px; }
+        #msg-display { color: #6c757d; margin-top: 2px; font-size: 11px; }
+
+        .log-container {
+            width: 100%;
+            height: 120px;
+            background-color: #fff; 
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            overflow-y: scroll;
+            padding: 8px;
+            font-size: 11px;
+            box-sizing: border-box;
+            word-break: break-all;
+            margin-bottom: 8px;
+        }
+        
+        .log-item {
+            display: grid;
+            grid-template-columns: 42px 65px 15px 1fr; 
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+        .log-num { color: #868e96; }
+        .log-name { font-weight: bold; color: #495057; }
+        .log-colon { text-align: center; color: #495057; }
+        .log-res-ok { color: #2b8a3e; font-weight: 600; }
+        .log-res-ng { color: #e03131; font-weight: 600; }
+        .log-sys { color: #868e96; }
+
+        .glitch-old {
+            text-decoration: line-through;
+            text-decoration-thickness: 20%;
+            margin-right: 2px;
+        }
+        
+        .glitch-arrow {
+            margin-right: 2px;
+            font-weight: bold;
+        }
+
+        .info-panel-container {
+            width: 100%;
+            background: #fff;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 8px;
+            border-left: 4px solid #3498db;
+            box-sizing: border-box;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .panel-label { font-size: 10px; color: #868e96; text-transform: uppercase; margin-bottom: 2px; }
+        .target-number { font-size: 34px; font-weight: 800; color: #2b8a3e; line-height: 1.1; letter-spacing: 2px; }
+        
+        .cards-wrapper {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .prime-card {
+            background: #e7f5ff;
+            border: 2px solid #74c0fc;
+            color: #1c7ed6;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 6px;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+            transition: all 0.2s;
+            cursor: pointer; 
+            touch-action: manipulation;
+        }
+        .prime-card.used {
+            background: #f1f3f5;
+            border-color: #ced4da;
+            color: #adb5bd;
+            opacity: 0.3;
+            box-shadow: none;
+        }
+
+        .input-container {
+            width: 100%;
+            background: #f1f3f5;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 6px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 左側の数式エリア：残りの可変スペースを自然に埋める */
+        .formula-area {
+            font-size: 20px;
+            font-weight: 700;
+            color: #495057;
+            letter-spacing: 0.5px;
+            flex: 1; 
+            text-align: left;
+            padding-left: 6px;
+            overflow-x: auto; 
+            white-space: nowrap;
+            transition: color 0.1s;
+            box-sizing: border-box;
+        }
+        .formula-area::-webkit-scrollbar { display: none; }
+        
+        .formula-area.formula-grayout {
+            color: #adb5bd !important;
+        }
+
+        /* 右側固定パネル：常に172pxの幅を確保してレイアウトの崩れを防ぐ */
+        .right-fixed-panel {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex-shrink: 0;
+            width: 172px;
+            height: 30px;
+            box-sizing: border-box;
+        }
+
+        /* display: none/flex の切り替えではなく、visibilityで制御してレイアウト位置を完全キープ */
+        .realtime-result-wrapper {
+            visibility: hidden; 
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+            width: 130px; 
+            box-sizing: border-box;
+        }
+
+        .result-blue-box {
+            background: #e7f5ff;
+            border: 1px solid #a5d8ff;
+            border-radius: 4px;
+            width: 80px; 
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1c7ed6;
+            font-size: 16px;
+            font-weight: 800;
+            white-space: nowrap;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .result-sub-scroll {
+            color: #adb5bd;
+            font-size: 16px;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow-x: auto;
+            width: 45px; 
+            margin-left: 5px;
+            flex-shrink: 0;
+            text-align: left;
+        }
+        .result-sub-scroll::-webkit-scrollbar { display: none; }
+
+        .invert-btn-area {
+            width: 36px;
+            height: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #495057;
+            background: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+            transition: all 0.1s;
+            flex-shrink: 0;
+            margin-left: 6px;
+            visibility: hidden; 
+        }
+        .invert-btn-area:disabled {
+            background: #f1f3f5 !important;
+            color: #adb5bd !important;
+            cursor: not-allowed !important;
+            border-color: #dee2e6 !important;
+            box-shadow: none !important;
+        }
+        .invert-btn-area.ready-to-use, .btn-common.ready-to-use {
+            background: #fff4e6 !important;
+            border-color: #ffd8a8 !important;
+            color: #f76707 !important;
+        }
+        .invert-btn-area.active {
+            background: #e67e22 !important;
+            color: #fff !important;
+            border-color: #d35400 !important;
+        }
+
+        .cursor {
+            color: #1c7ed6;
+            font-weight: 400;
+            margin-left: 2px;
+            animation: blink 0.8s infinite;
+        }
+        .formula-grayout .cursor {
+            color: #adb5bd !important;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .keyboard-container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-auto-rows: 42px;
+            gap: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .btn-common, .btn-enter-size {
+            width: 100%; height: 100%;
+            font-size: 14px; font-weight: bold;
+            cursor: pointer; border: 1px solid #ced4da;
+            border-radius: 4px; background: #fff;
+            color: #495057;
+            transition: background 0.1s, color 0.1s, border-color 0.1s;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #btn-opt1, #btn-opt2 {
+            font-size: 11px;
+        }
+        .btn-enter-size { grid-row: span 2; background: #1c7ed6; color: #fff; border: none; }
+        .btn-enter-size:active:not(:disabled) { background: #1864ab; }
+        
+        button:disabled { 
+            background-color: #f1f3f5 !important; 
+            color: #adb5bd !important; 
+            cursor: not-allowed !important; 
+            border-color: #dee2e6 !important;
+            box-shadow: none !important;
+        }
+        button:not(:disabled):active { background: #f1f3f5; }
+    </style>
+</head>
+<body>
+
+    <h1>素因数合成ゲーム</h1>
+
+    <div class="game-window">
+        
+        <div class="status-container">
+            <div id="phase-display">フェーズ：お題設定</div>
+            <div id="msg-display">数字を入力してください</div>
+        </div>
+
+        <div class="log-container" id="log-box"></div>
+
+        <div class="info-panel-container" id="info-panel">
+            <div class="panel-label" id="panel-title">現在のお題</div>
+            <div id="panel-content" class="target-number">---</div>
+        </div>
+
+        <div class="input-container">
+            <div id="formula-box" class="formula-area"></div>
+            <div class="right-fixed-panel">
+                <div id="result-wrapper" class="realtime-result-wrapper">
+                    <div id="result-blue-box" class="result-blue-box">= ---</div>
+                    <div id="result-sub-scroll" class="result-sub-scroll"></div>
+                </div>
+                <button id="btn-invert" class="invert-btn-area" onclick="toggleInvert()">⟳</button>
+            </div>
+        </div>
+
+        <div class="keyboard-container">
+            <button id="btn-7" class="btn-common" onclick="pressNum('7')">7</button>
+            <button id="btn-8" class="btn-common" onclick="pressNum('8')">8</button>
+            <button id="btn-9" class="btn-common" onclick="pressNum('9')">9</button>
+            <button id="btn-div" class="btn-common sign-btn" data-sign="÷" onclick="pressNum('÷')">÷</button>
+            <button id="btn-opt1" class="btn-common" onclick="pressOpt1()">降参</button>
+            
+            <button id="btn-4" class="btn-common" onclick="pressNum('4')">4</button>
+            <button id="btn-5" class="btn-common" onclick="pressNum('5')">5</button>
+            <button id="btn-6" class="btn-common" onclick="pressNum('6')">6</button>
+            <button id="btn-times" class="btn-common sign-btn" data-sign="×" onclick="pressNum('×')">×</button>
+            <button id="btn-opt2" class="btn-common" onclick="pressOpt2()">パス</button>
+            
+            <button id="btn-1" class="btn-common" onclick="pressNum('1')">1</button>
+            <button id="btn-2" class="btn-common" onclick="pressNum('2')">2</button>
+            <button id="btn-3" class="btn-common" onclick="pressNum('3')">3</button>
+            <button id="btn-minus" class="btn-common sign-btn" data-sign="－" onclick="pressNum('－')">－</button>
+            <button id="btn-enter" class="btn-enter-size" onclick="pressEnter()">決定</button>
+            
+            <button id="btn-clear" class="btn-common" onclick="pressClear()">C</button>
+            <button id="btn-0" class="btn-common" onclick="pressNum('0')">0</button>
+            <button id="btn-back" class="btn-common" onclick="pressBack()">◀︎</button>
+            <button id="btn-plus" class="btn-common sign-btn" data-sign="＋" onclick="pressNum('＋')">＋</button>
+        </div>
+        
+    </div>
+
+    <script>
+        const GAME_SETTING = {
+            LIMIT_DIGITS: 4,      
+            MIN_TARGET: 0,         
+            MAX_TARGET: 9999,
+            ENABLE_INVERT: true, 
+        };
+
+        const CONFIG = {
+            MSG_PHASE: {
+                SETUP: "フェーズ：お題設定",
+                DECOMPOSE: "フェーズ：素因数分解",
+                SYNTHESIS: "フェーズ：素因数合成"
+            },
+            MSG_INSTRUCT: {
+                SETUP: `お題となる数字（最大${GAME_SETTING.LIMIT_DIGITS}桁）を入力してください`,
+                DECOMPOSE: "お題を素因数分解してください",
+                SYNTHESIS: "すべてのカードを使い切る数式を入力してください"
+            }
+        };
+
+        let currentMode = "SETUP"; 
+        let currentTarget = 0;
+        let previousTarget = null; 
+        let targetPrimeFactors = []; 
+        let inputStr = ""; 
+        let logCounter = 1;
+        let isInvertedState = false; 
+
+        let hasPowerOfTwo = true; 
+        let hasJoinMode = true;   
+
+        function getInitialZeroStr() {
+            return "0".repeat(GAME_SETTING.LIMIT_DIGITS);
+        }
+
+        function formatWithDigits(num) {
+            return String(num).padStart(GAME_SETTING.LIMIT_DIGITS, '0');
+        }
+
+        function resetToSetup() {
+            currentMode = "SETUP";
+            currentTarget = 0;
+            previousTarget = null; 
+            targetPrimeFactors = [];
+            inputStr = getInitialZeroStr();
+            isInvertedState = false; 
+            hasPowerOfTwo = true;
+            hasJoinMode = true;
+            updateStatusDisplay();
+            updateUI();
+        }
+
+        function appendLogRow(numText, nameText, oldVal, newVal, messageSuffix, typeClass) {
+            const logBox = document.getElementById("log-box");
+            const item = document.createElement("div");
+            item.className = "log-item";
+
+            const nDiv = document.createElement("div"); nDiv.className = "log-num"; nDiv.innerText = numText;
+            const nmDiv = document.createElement("div"); nmDiv.className = "log-name"; nmDiv.innerText = nameText;
+            const cDiv = document.createElement("div"); cDiv.className = "log-colon"; cDiv.innerText = ":";
+            
+            const mDiv = document.createElement("div"); 
+            mDiv.className = `log-msg ${typeClass}`; 
+
+            if (oldVal !== null && oldVal !== newVal) {
+                const sTag = document.createElement("span");
+                sTag.className = "glitch-old";
+                sTag.innerText = oldVal;
+                
+                const arrowTag = document.createElement("span");
+                arrowTag.className = "glitch-arrow";
+                arrowTag.innerText = "...";
+
+                mDiv.appendChild(sTag);
+                mDiv.appendChild(arrowTag);
+            }
+
+            const textNode = document.createTextNode(`${newVal}${messageSuffix}`);
+            mDiv.appendChild(textNode);
+
+            item.appendChild(nDiv); item.appendChild(nmDiv); item.appendChild(cDiv);
+            item.appendChild(mDiv);
+            logBox.appendChild(item);
+            logBox.scrollTop = logBox.scrollHeight;
+            logCounter++;
+        }
+
+        function logGame(sender, value, numberType, isSuccess, oldVal = null) {
+            const suffix = isSuccess ? "は" + numberType + "です" : "は" + numberType + "ではありません";
+            const cls = isSuccess ? "log-res-ok" : "log-res-ng";
+            appendLogRow(`[${String(logCounter).padStart(3, '0')}]`, sender, oldVal, value, suffix, cls);
+        }
+
+        function logSystemNotice(text) {
+            appendLogRow(`[${String(logCounter).padStart(3, '0')}]`, "システム", null, text, "", "log-sys");
+        }
+
+        function updateStatusDisplay() {
+            document.getElementById("phase-display").innerText = CONFIG.MSG_PHASE[currentMode];
+            document.getElementById("msg-display").innerText = CONFIG.MSG_INSTRUCT[currentMode];
+        }
+
+        function calculateLeftToRight(formulaStr) {
+            const tokens = formulaStr.match(/(\d+|[＋－×÷²_])/g);
+            if (!tokens) return 0;
+
+            let processedTokens = [];
+            for (let i = 0; i < tokens.length; i++) {
+                let token = tokens[i];
+
+                if (["＋", "－", "×", "÷"].includes(token)) {
+                    processedTokens.push(token);
+                } else {
+                    let currentNumStr = token;
+
+                    if (i + 1 < tokens.length && tokens[i+1] === "_") {
+                        if (i + 2 < tokens.length && !isNaN(tokens[i+2])) {
+                            currentNumStr += tokens[i+2];
+                            i += 2; 
+                        } else {
+                            i += 1; 
+                        }
+                    }
+
+                    let currentVal = parseInt(currentNumStr, 10);
+
+                    if (i + 1 < tokens.length && tokens[i+1] === "²") {
+                        currentVal = currentVal * currentVal;
+                        i += 1; 
+                    }
+
+                    processedTokens.push(currentVal);
+                }
+            }
+
+            let result = 0;
+            let currentOp = "＋"; 
+
+            for (let token of processedTokens) {
+                if (["＋", "－", "×", "÷"].includes(token)) {
+                    currentOp = token;
+                } else {
+                    if (currentOp === "＋") result += token;
+                    else if (currentOp === "－") result -= token;
+                    else if (currentOp === "×") result *= token;
+                    else if (currentOp === "÷") {
+                        if (token === 0) result = 0; 
+                        else result = Math.trunc(result / token);
+                    }
+                }
+            }
+            return result;
+        }
+
+        function isComposite(num) {
+            if (num <= 1) return false;
+            for (let i = 2; i * i <= num; i++) {
+                if (num % i === 0) return true;
+            }
+            return false;
+        }
+
+        function computePrimeFactors(num) {
+            let factors = [];
+            let d = 2;
+            while (num > 1) {
+                while (num % d === 0) {
+                    factors.push(d);
+                    num /= d;
+                }
+                d++;
+            }
+            return factors;
+        }
+
+        function checkDecomposeAnswer(formulaStr, correctFactors) {
+            const playerFactors = formulaStr.split("×").map(num => parseInt(num, 10));
+            playerFactors.sort((a, b) => a - b);
+            const sortedCorrect = [...correctFactors].sort((a, b) => a - b);
+            if (playerFactors.length !== sortedCorrect.length) return false;
+            return playerFactors.every((val, index) => val === sortedCorrect[index]);
+        }
+
+        function getUsedCardsIndices(formulaStr, correctFactors) {
+            const tokens = formulaStr.match(/\d+/g) || [];
+            let sortedInputNums = tokens.map(n => parseInt(n, 10)).sort((a, b) => b - a);
+            
+            let tempFactors = [...correctFactors];
+            let usedIndices = [];
+
+            for (let num of sortedInputNums) {
+                const idx = tempFactors.indexOf(num);
+                if (idx !== -1) {
+                    usedIndices.push(idx);
+                    tempFactors[idx] = null; 
+                }
+            }
+            return usedIndices;
+        }
+
+        function analyzeFormula(str) {
+            const lastChar = str.slice(-1);
+            const isLastCharSign = ["＋", "－", "×", "÷"].includes(lastChar);
+            const isLastCharPower = (lastChar === "²");
+            const isLastCharJoin = (lastChar === "_");
+            
+            const tokens = str.match(/\d+$/);
+            const currentWritingStr = tokens ? tokens[0] : "";
+
+            return { isLastCharSign, isLastCharPower, isLastCharJoin, currentWritingStr };
+        }
+
+        function getRandomTarget() {
+            const range = GAME_SETTING.MAX_TARGET - GAME_SETTING.MIN_TARGET + 1;
+            return Math.floor(Math.random() * range) + GAME_SETTING.MIN_TARGET;
+        }
+
+        function processNextTarget(num, sender, firstOldVal = null) {
+            let currentCheckNum = num;
+            let currentSender = sender;
+            let initialOldVal = firstOldVal; 
+
+            while (true) {
+                if (currentCheckNum < GAME_SETTING.MIN_TARGET || 
+                    currentCheckNum > GAME_SETTING.MAX_TARGET || 
+                    currentCheckNum === currentTarget || 
+                    currentCheckNum === previousTarget) {
+                    
+                    if (sender === "プレイヤー" && (currentCheckNum === currentTarget || currentCheckNum === previousTarget)) {
+                        const formattedStr = formatWithDigits(num);
+                        appendLogRow(`[${String(logCounter).padStart(3, '0')}]`, "プレイヤー", initialOldVal, formattedStr, "は同じ数です", "log-res-ok");
+                        sender = "システム"; 
+                    }
+
+                    currentCheckNum = getRandomTarget();
+                    currentSender = "システム";
+                    initialOldVal = null; 
+                    continue;
+                }
+
+                const formattedStr = formatWithDigits(currentCheckNum);
+
+                if (isComposite(currentCheckNum)) {
+                    logGame(currentSender, formattedStr, "合成数", true, initialOldVal);
+                    previousTarget = currentTarget;
+                    currentTarget = currentCheckNum;
+                    break;
+                } else {
+                    logGame(currentSender, formattedStr, "合成数", false, initialOldVal);
+                    currentCheckNum = getRandomTarget();
+                    currentSender = "システム";
+                    initialOldVal = null; 
+                }
+            }
+
+            targetPrimeFactors = computePrimeFactors(currentTarget);
+        }
+
+        function clickPrimeCard(factor, appearanceOrder, isUsed) {
+            if (currentMode !== "SYNTHESIS") return;
+
+            if (!isUsed) {
+                const { isLastCharSign, isLastCharPower, isLastCharJoin, currentWritingStr } = analyzeFormula(inputStr);
+                const factorStr = String(factor);
+
+                if (isLastCharPower) return;
+
+                if (isLastCharJoin) {
+                    inputStr += factorStr;
+                } else if (currentWritingStr === "") {
+                    inputStr += factorStr;
+                } else {
+                    if (factorStr.startsWith(currentWritingStr) && factorStr !== currentWritingStr) {
+                        inputStr += factorStr.slice(currentWritingStr.length);
+                    } else if (isLastCharSign) {
+                        inputStr += factorStr;
+                    } else {
+                        return; 
+                    }
+                }
+            } else {
+                const tokens = inputStr.match(/(\d+|[＋－×÷²_])/g);
+                if (!tokens) return;
+
+                let matchCount = 0;
+                let targetTokenIndex = -1;
+
+                for (let i = 0; i < tokens.length; i++) {
+                    if (tokens[i] === String(factor)) {
+                        matchCount++;
+                        if (matchCount === appearanceOrder) {
+                            targetTokenIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (targetTokenIndex !== -1) {
+                    if (tokens[targetTokenIndex + 1] === "²") {
+                        tokens.splice(targetTokenIndex + 1, 1);
+                        hasPowerOfTwo = true; 
+                    }
+                    if (tokens[targetTokenIndex - 1] === "_") {
+                        tokens.splice(targetTokenIndex - 1, 1);
+                        hasJoinMode = true;
+                        targetTokenIndex--;
+                    }
+
+                    if (targetTokenIndex > 0 && ["＋", "－", "×", "÷"].includes(tokens[targetTokenIndex - 1])) {
+                        tokens.splice(targetTokenIndex - 1, 2); 
+                    } else {
+                        tokens.splice(targetTokenIndex, 1); 
+                    }
+
+                    if (tokens.length > 0 && ["＋", "－", "×", "÷"].includes(tokens[0])) {
+                        tokens.shift();
+                    }
+
+                    inputStr = tokens.join("");
+                }
+            }
+            updateUI();
+        }
+
+        function renderInfoPanel(usedIndices) {
+            const titleEl = document.getElementById("panel-title");
+            const contentEl = document.getElementById("panel-content");
+
+            if (currentMode === "SETUP" || currentMode === "DECOMPOSE") {
+                titleEl.innerText = "現在のお題";
+                contentEl.className = "target-number";
+                contentEl.innerText = currentTarget ? formatWithDigits(currentTarget) : "---";
+            } 
+            else if (currentMode === "SYNTHESIS") {
+                titleEl.innerText = "所持素因数カード";
+                contentEl.className = "cards-wrapper";
+                contentEl.innerHTML = "";
+
+                let factorGlobalCounts = {};
+                
+                const tokens = inputStr.match(/\d+/g) || [];
+                let currentFormulaCounts = {};
+                tokens.forEach(t => {
+                    const num = parseInt(t, 10);
+                    currentFormulaCounts[num] = (currentFormulaCounts[num] || 0) + 1;
+                });
+
+                targetPrimeFactors.forEach((factor, idx) => {
+                    factorGlobalCounts[factor] = (factorGlobalCounts[factor] || 0) + 1;
+                    const thisCardOrder = factorGlobalCounts[factor];
+
+                    const isUsed = thisCardOrder <= (currentFormulaCounts[factor] || 0);
+
+                    const card = document.createElement("div");
+                    card.className = "prime-card";
+                    card.innerText = factor;
+                    
+                    if (isUsed) {
+                        card.className += " used";
+                    }
+                    
+                    card.onclick = function() {
+                        const currentIsUsed = this.classList.contains("used");
+                        clickPrimeCard(factor, thisCardOrder, currentIsUsed);
+                    };
+
+                    contentEl.appendChild(card);
+                });
+            }
+        }
+
+        function updateUI() {
+            const formulaBox = document.getElementById("formula-box");
+            const resultWrapper = document.getElementById("result-wrapper");
+            const resultBlueBox = document.getElementById("result-blue-box");
+            const resultSubScroll = document.getElementById("result-sub-scroll");
+            const invertBtn = document.getElementById("btn-invert");
+            
+            const opt1Btn = document.getElementById("btn-opt1");
+            const opt2Btn = document.getElementById("btn-opt2");
+
+            formulaBox.innerHTML = ""; 
+            formulaBox.appendChild(document.createTextNode(inputStr || ""));
+            
+            const cursorSpan = document.createElement("span");
+            cursorSpan.className = "cursor"; cursorSpan.innerText = "|";
+            formulaBox.appendChild(cursorSpan);
+
+            formulaBox.scrollLeft = formulaBox.scrollWidth;
+
+            const usedIndices = getUsedCardsIndices(inputStr, targetPrimeFactors);
+            renderInfoPanel(usedIndices);
+
+            const { isLastCharSign, isLastCharPower, isLastCharJoin, currentWritingStr } = analyzeFormula(inputStr);
+
+            let isCardCompleted = false;
+            if (isLastCharPower) {
+                isCardCompleted = true; 
+            } else if (currentWritingStr !== "") {
+                const parsedNum = parseInt(currentWritingStr, 10);
+                isCardCompleted = targetPrimeFactors.includes(parsedNum);
+            }
+
+            if (currentMode === "SYNTHESIS") {
+                /* JS側の制御を display ではなく visibility に完全に統一 */
+                resultWrapper.style.visibility = "visible";
+                
+                opt1Btn.innerText = `□_□ ${hasJoinMode ? "①" : "⓪"}`;
+                opt2Btn.innerText = `□² ${hasPowerOfTwo ? "①" : "⓪"}`;
+
+                let calcVal = calculateLeftToRight(inputStr);
+                let absoluteVal = Math.abs(calcVal);
+                let fullResultStr = formatWithDigits(absoluteVal);
+
+                const isOverDigits = fullResultStr.length > 4;
+
+                if (isOverDigits) {
+                    resultBlueBox.innerText = `= ${fullResultStr.slice(0, 4)}`;
+                    resultSubScroll.innerText = fullResultStr.slice(4);
+                    resultSubScroll.style.display = "block";
+                    resultSubScroll.scrollLeft = 0;
+                } else {
+                    resultBlueBox.innerText = `= ${fullResultStr}`;
+                    resultSubScroll.innerText = "";
+                    resultSubScroll.style.display = "none";
+                }
+
+                opt1Btn.classList.remove("ready-to-use");
+                opt2Btn.classList.remove("ready-to-use");
+
+                const hasUnusedCards = usedIndices.length < targetPrimeFactors.length;
+                
+                if (hasJoinMode && isCardCompleted && hasUnusedCards && !isLastCharPower) {
+                    opt1Btn.classList.add("ready-to-use");
+                    opt1Btn.disabled = false;
+                } else {
+                    opt1Btn.disabled = !hasJoinMode || !isCardCompleted || !hasUnusedCards || isLastCharPower;
+                }
+
+                if (hasPowerOfTwo && isCardCompleted && !isLastCharPower) {
+                    opt2Btn.classList.add("ready-to-use");
+                    opt2Btn.disabled = false;
+                } else {
+                    opt2Btn.disabled = !hasPowerOfTwo || !isCardCompleted || isLastCharPower;
+                }
+
+                invertBtn.classList.remove("ready-to-use", "active");
+                formulaBox.classList.remove("formula-grayout");
+
+                const isReady = (usedIndices.length === targetPrimeFactors.length) && !isLastCharSign && !isLastCharJoin;
+
+                if (GAME_SETTING.ENABLE_INVERT && !isOverDigits) {
+                    invertBtn.style.visibility = "visible"; 
+                } else {
+                    invertBtn.style.visibility = "hidden"; 
+                    if (isInvertedState) {
+                        isInvertedState = false;
+                        updateUI();
+                        return;
+                    }
+                }
+
+                if (!isOverDigits) {
+                    invertBtn.disabled = !isReady;
+                    if (isReady) {
+                        if (isInvertedState) {
+                            absoluteVal = GAME_SETTING.MAX_TARGET - absoluteVal;
+                            invertBtn.classList.add("active");
+                            invertBtn.innerText = "⟲"; 
+                            formulaBox.classList.add("formula-grayout"); 
+                            resultBlueBox.innerText = `= ${formatWithDigits(absoluteVal)}`;
+                        } else {
+                            invertBtn.classList.add("ready-to-use"); 
+                            invertBtn.innerText = "⟳"; 
+                        }
+                    }
+                }
+            } else {
+                formulaBox.className = "formula-area";
+                /* 非表示の時も display: none ではなく visibility: hidden にすることで右側パネルの幅を維持 */
+                resultWrapper.style.visibility = "hidden"; 
+                invertBtn.style.visibility = "hidden"; 
+
+                opt1Btn.innerText = "降参"; opt1Btn.disabled = false;
+                opt2Btn.innerText = "パス"; opt2Btn.disabled = false;
+                opt1Btn.classList.remove("ready-to-use");
+                opt2Btn.classList.remove("ready-to-use");
+            }
+
+            const enterBtn = document.getElementById("btn-enter");
+            if (currentMode === "SYNTHESIS") {
+                enterBtn.disabled = (usedIndices.length < targetPrimeFactors.length) || isLastCharSign || isLastCharJoin;
+            } else {
+                enterBtn.disabled = (inputStr === "" || isLastCharSign);
+            }
+
+            const isSignAllowed = isCardCompleted && (usedIndices.length < targetPrimeFactors.length);
+
+            document.querySelectorAll(".sign-btn").forEach(btn => {
+                const btnSign = btn.getAttribute("data-sign");
+                if (currentMode === "SETUP" || inputStr.length === 0) {
+                    btn.disabled = true;
+                } else if (currentMode === "DECOMPOSE") {
+                    btn.disabled = (btnSign !== "×" || isLastCharSign);
+                } else if (currentMode === "SYNTHESIS") {
+                    btn.disabled = !isSignAllowed;
+                }
+            });
+
+            const numButtons = ["0","1","2","3","4","5","6","7","8","9"];
+            numButtons.forEach(num => {
+                const btn = document.getElementById(`btn-${num}`);
+
+                if (currentMode === "SETUP") {
+                    const currentLen = inputStr.replace(/^0+/, '').length;
+                    btn.disabled = (inputStr !== getInitialZeroStr() && currentLen >= GAME_SETTING.LIMIT_DIGITS);
+                } 
+                else if (currentMode === "SYNTHESIS") {
+                    if (isLastCharPower) {
+                        btn.disabled = true;
+                        return;
+                    }
+
+                    let availableFactors = [...targetPrimeFactors];
+                    usedIndices.forEach(i => availableFactors[i] = null);
+                    availableFactors = availableFactors.filter(v => v !== null); // タイポ修正
+
+                    let canInput = false;
+                    if (isLastCharJoin) {
+                        canInput = availableFactors.some(f => String(f).startsWith(num));
+                    } else if (currentWritingStr === "") {
+                        canInput = availableFactors.some(f => String(f).startsWith(num));
+                    } else {
+                        const nextTargetStr = currentWritingStr + num;
+                        canInput = availableFactors.some(f => String(f).startsWith(nextTargetStr));
+                    }
+                    btn.disabled = !canInput;
+                } 
+                else {
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        function pressNum(char) {
+            if (currentMode === "SETUP") {
+                const zeroStr = getInitialZeroStr();
+                if (inputStr === zeroStr) inputStr = zeroStr.slice(1) + char;
+                else inputStr = (inputStr + char).slice(-GAME_SETTING.LIMIT_DIGITS);
+            } else {
+                inputStr += char;
+            }
+            updateUI();
+        }
+
+        function pressOpt1() {
+            if (currentMode === "SYNTHESIS") {
+                if (!hasJoinMode) return;
+                inputStr += "_";
+                hasJoinMode = false;
+                updateUI();
+            } else {
+                if(confirm("降参しますか？")) location.reload();
+            }
+        }
+
+        function pressOpt2() {
+            if (currentMode === "SYNTHESIS") {
+                if (!hasPowerOfTwo) return;
+                inputStr += "²";
+                hasPowerOfTwo = false;
+                updateUI();
+            } else {
+                logSystemNotice("パスが選択されました");
+            }
+        }
+
+        function pressClear() { 
+            if (currentMode === "SETUP") {
+                inputStr = getInitialZeroStr();
+            } else {
+                inputStr = ""; 
+                if (currentMode === "SYNTHESIS") {
+                    hasPowerOfTwo = true;
+                    hasJoinMode = true;
+                }
+            }
+            updateUI(); 
+        }
+        
+        function pressBack() { 
+            if (currentMode === "SETUP") {
+                inputStr = "0" + inputStr.slice(0, -1);
+            } else {
+                const last = inputStr.slice(-1);
+                if (last === "²") hasPowerOfTwo = true;
+                if (last === "_") hasJoinMode = true;
+                
+                inputStr = inputStr.slice(0, -1);
+
+                if (inputStr.slice(-1) === "_") {
+                    hasJoinMode = false;
+                }
+            }
+            updateUI(); 
+        }
+
+        function toggleInvert() {
+            if (!GAME_SETTING.ENABLE_INVERT) return; 
+            isInvertedState = !isInvertedState;
+            updateUI();
+        }
+
+        function pressEnter() {
+            if (currentMode === "SETUP") {
+                let num = parseInt(inputStr, 10);
+                if (num < GAME_SETTING.MIN_TARGET || num > GAME_SETTING.MAX_TARGET) {
+                    alert(`エラー: ${GAME_SETTING.MIN_TARGET} から ${GAME_SETTING.MAX_TARGET} の範囲で入力してください。`);
+                    return;
+                }
+                processNextTarget(num, "プレイヤー");
+                currentMode = "DECOMPOSE"; 
+                inputStr = "";
+            } 
+            else if (currentMode === "DECOMPOSE") {
+                let isCorrect = checkDecomposeAnswer(inputStr, targetPrimeFactors);
+                if (isCorrect) {
+                    logGame("プレイヤー", inputStr, "素因数", true);
+                    currentMode = "SYNTHESIS";
+                    hasPowerOfTwo = true; 
+                    hasJoinMode = true;
+                } else {
+                    logGame("プレイヤー", inputStr, "素因数", false);
+                }
+                inputStr = "";
+            } 
+            else if (currentMode === "SYNTHESIS") {
+                let resultVal = calculateLeftToRight(inputStr);
+                let fullResultStr = formatWithDigits(Math.abs(resultVal));
+                
+                let finalAbsoluteVal = parseInt(fullResultStr.slice(0, 4), 10);
+                let originalAbsoluteVal = formatWithDigits(Math.abs(resultVal));
+
+                if (GAME_SETTING.ENABLE_INVERT && isInvertedState) {
+                    finalAbsoluteVal = GAME_SETTING.MAX_TARGET - finalAbsoluteVal;
+                }
+
+                processNextTarget(finalAbsoluteVal, "プレイヤー", (GAME_SETTING.ENABLE_INVERT && isInvertedState) ? originalAbsoluteVal : null);
+                currentMode = "DECOMPOSE"; 
+                inputStr = "";
+            }
+
+            updateStatusDisplay();
+            updateUI();
+        }
+
+        window.onload = () => { resetToSetup(); }; 
+    </script>
+</body>
+</html>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
