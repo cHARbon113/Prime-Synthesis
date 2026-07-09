@@ -133,7 +133,6 @@
             box-shadow: none;
         }
 
-        /* 入力エリア：横並びの要素が絶対に被らないようにFlex配置 */
         .input-container {
             width: 100%;
             background: #f1f3f5;
@@ -149,7 +148,6 @@
             overflow: hidden;
         }
 
-        /* 数式表示：分解フェーズでも収まるよう16pxに縮小。左スクロールを可能に */
         .formula-area {
             font-size: 16px;
             font-weight: 700;
@@ -162,13 +160,12 @@
             white-space: nowrap;
             transition: color 0.1s;
         }
-        .formula-area::-webkit-scrollbar { display: none; } /* スクロールバー非表示 */
+        .formula-area::-webkit-scrollbar { display: none; }
         
         .formula-area.formula-grayout {
             color: #adb5bd !important;
         }
 
-        /* 結果表示全体の親ラッパー（位置固定用） */
         .realtime-result-wrapper {
             display: none;
             align-items: center;
@@ -177,7 +174,6 @@
             box-sizing: border-box;
         }
 
-        /* 青枠部分（固定サイズで4桁が綺麗に収まる） */
         .result-blue-box {
             background: #e7f5ff;
             border: 1px solid #a5d8ff;
@@ -195,20 +191,18 @@
             box-sizing: border-box;
         }
 
-        /* 4桁からはみ出た薄グレーの数字（青枠の外に配置、スクロール可能） */
         .result-sub-scroll {
             color: #adb5bd;
             font-size: 16px;
             font-weight: bold;
             white-space: nowrap;
             overflow-x: auto;
-            max-width: 55px; /* 反転ボタンや画面端と干渉しない幅 */
+            max-width: 55px; 
             margin-left: 4px;
             flex-shrink: 0;
         }
         .result-sub-scroll::-webkit-scrollbar { display: none; }
 
-        /* 反転ボタンの配置固定 */
         .invert-btn-area {
             width: 36px;
             height: 30px;
@@ -448,42 +442,58 @@
             document.getElementById("msg-display").innerText = CONFIG.MSG_INSTRUCT[currentMode];
         }
 
+        // 二乗を「直前の数（塊）だけ」に限定した計算ロジック
         function calculateLeftToRight(formulaStr) {
             const tokens = formulaStr.match(/(\d+|[＋－×÷²_])/g);
             if (!tokens) return 0;
 
+            // 事前処理: 結合記号「_」と二乗「²」を各数値トークンに適用して、純粋な「数字と演算子」の配列を作る
+            let processedTokens = [];
+            for (let i = 0; i < tokens.length; i++) {
+                let token = tokens[i];
+
+                if (["＋", "－", "×", "÷"].includes(token)) {
+                    processedTokens.push(token);
+                } else {
+                    // 数字トークンだった場合の結合・二乗の先読み処理
+                    let currentNumStr = token;
+
+                    // 1. 結合処理（次のトークンが「_」なら後ろの数字をくっつける）
+                    if (i + 1 < tokens.length && tokens[i+1] === "_") {
+                        if (i + 2 < tokens.length && !isNaN(tokens[i+2])) {
+                            currentNumStr += tokens[i+2];
+                            i += 2; // 「_」と「数字」の2個分進める
+                        } else {
+                            i += 1; // 後ろに数字がまだない場合は「_」をスキップするだけ
+                        }
+                    }
+
+                    let currentVal = parseInt(currentNumStr, 10);
+
+                    // 2. 二乗処理（さらに次のトークンが「²」なら、この数字だけを二乗する）
+                    if (i + 1 < tokens.length && tokens[i+1] === "²") {
+                        currentVal = currentVal * currentVal;
+                        i += 1; // 「²」の分進める
+                    }
+
+                    processedTokens.push(currentVal);
+                }
+            }
+
+            // 左から順に通常計算
             let result = 0;
             let currentOp = "＋"; 
 
-            for (let i = 0; i < tokens.length; i++) {
-                const token = tokens[i];
-
+            for (let token of processedTokens) {
                 if (["＋", "－", "×", "÷"].includes(token)) {
                     currentOp = token;
-                } else if (token === "²") {
-                    result = result * result;
-                } else if (token === "_") {
-                    if (i + 1 < tokens.length && !isNaN(tokens[i+1])) {
-                        let prevNumStr = tokens[i-1] || "0";
-                        let nextNumStr = tokens[i+1];
-                        let combinedNum = parseInt(prevNumStr + nextNumStr, 10);
-                        
-                        if (currentOp === "＋") result = result - parseInt(prevNumStr, 10) + combinedNum;
-                        else if (currentOp === "－") result = result + parseInt(prevNumStr, 10) - combinedNum;
-                        else if (currentOp === "×") result = Math.trunc(result / parseInt(prevNumStr, 10)) * combinedNum;
-                        else if (currentOp === "÷") {
-                            result = combinedNum; 
-                        }
-                        i++; 
-                    }
                 } else {
-                    const nextNum = parseInt(token, 10);
-                    if (currentOp === "＋") result += nextNum;
-                    else if (currentOp === "－") result -= nextNum;
-                    else if (currentOp === "×") result *= nextNum;
+                    if (currentOp === "＋") result += token;
+                    else if (currentOp === "－") result -= token;
+                    else if (currentOp === "×") result *= token;
                     else if (currentOp === "÷") {
-                        if (nextNum === 0) result = 0; 
-                        else result = Math.trunc(result / nextNum);
+                        if (token === 0) result = 0; 
+                        else result = Math.trunc(result / token);
                     }
                 }
             }
@@ -724,7 +734,6 @@
             cursorSpan.className = "cursor"; cursorSpan.innerText = "|";
             formulaBox.appendChild(cursorSpan);
 
-            // 長い数式がつまったら自動で右端（最新位置）に左スクロールさせる
             formulaBox.scrollLeft = formulaBox.scrollWidth;
 
             const usedIndices = getUsedCardsIndices(inputStr, targetPrimeFactors);
@@ -732,10 +741,16 @@
 
             const { isLastCharSign, isLastCharPower, isLastCharJoin, currentWritingStr } = analyzeFormula(inputStr);
 
+            // 演算子と同じ入力条件の判定ロジック
+            let isCardCompleted = false;
+            if (currentWritingStr !== "") {
+                const parsedNum = parseInt(currentWritingStr, 10);
+                isCardCompleted = targetPrimeFactors.includes(parsedNum);
+            }
+
             if (currentMode === "SYNTHESIS") {
                 resultWrapper.style.display = "flex";
                 
-                // ボタンの名称をシンプルな「記号＋回数」に変更
                 opt1Btn.innerText = `_ ${hasJoinMode ? "①" : "⓪"}`;
                 opt2Btn.innerText = `² ${hasPowerOfTwo ? "①" : "⓪"}`;
 
@@ -745,7 +760,6 @@
 
                 const isOverDigits = fullResultStr.length > 4;
 
-                // 4桁固定青枠 ＆ はみ出しグレー表示の切り分け
                 if (isOverDigits) {
                     resultBlueBox.innerText = `= ${fullResultStr.slice(0, 4)}`;
                     resultSubScroll.innerText = fullResultStr.slice(4);
@@ -756,26 +770,25 @@
                     resultSubScroll.style.display = "none";
                 }
 
-                // 強調カラーの制御
                 opt1Btn.classList.remove("ready-to-use");
                 opt2Btn.classList.remove("ready-to-use");
 
+                // ★結合・二乗の入力条件を「演算子（カード確定時）」と完全に同一化
                 const hasUnusedCards = usedIndices.length < targetPrimeFactors.length;
-                if (hasJoinMode && currentWritingStr !== "" && !isLastCharSign && !isLastCharPower && hasUnusedCards) {
+                if (hasJoinMode && isCardCompleted && hasUnusedCards) {
                     opt1Btn.classList.add("ready-to-use");
                     opt1Btn.disabled = false;
                 } else {
-                    opt1Btn.disabled = !hasJoinMode || (currentWritingStr === "") || isLastCharSign || isLastCharPower || !hasUnusedCards;
+                    opt1Btn.disabled = !hasJoinMode || !isCardCompleted || !hasUnusedCards;
                 }
 
-                if (hasPowerOfTwo && currentWritingStr !== "" && !isLastCharSign && !isLastCharPower) {
+                if (hasPowerOfTwo && isCardCompleted) {
                     opt2Btn.classList.add("ready-to-use");
                     opt2Btn.disabled = false;
                 } else {
-                    opt2Btn.disabled = !hasPowerOfTwo || (currentWritingStr === "") || isLastCharSign || isLastCharPower;
+                    opt2Btn.disabled = !hasPowerOfTwo || !isCardCompleted;
                 }
 
-                // 補数反転（4桁オーバー時は自動非表示化）
                 invertBtn.classList.remove("ready-to-use", "active");
                 formulaBox.classList.remove("formula-grayout");
 
@@ -784,7 +797,7 @@
                 if (GAME_SETTING.ENABLE_INVERT && !isOverDigits) {
                     invertBtn.style.display = "flex"; 
                 } else {
-                    invertBtn.style.display = "none"; // ★4桁以上の時は完全に非表示
+                    invertBtn.style.display = "none"; 
                     if (isInvertedState) {
                         isInvertedState = false;
                         updateUI();
@@ -826,10 +839,8 @@
                 enterBtn.disabled = (inputStr === "" || isLastCharSign);
             }
 
-            // 演算符号
-            const isSignAllowed = (usedIndices.length > 0) && 
-                                  (usedIndices.length < targetPrimeFactors.length) && 
-                                  !isLastCharSign && !isLastCharJoin;
+            // 演算符号（結合・二乗の活性タイミングと同じ条件）
+            const isSignAllowed = isCardCompleted && (usedIndices.length < targetPrimeFactors.length);
 
             document.querySelectorAll(".sign-btn").forEach(btn => {
                 const btnSign = btn.getAttribute("data-sign");
