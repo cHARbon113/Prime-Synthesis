@@ -144,22 +144,25 @@
             min-height: 42px;
             display: flex;
             align-items: center;
-            justify-content: space-between; /* 左右の要素のバランスをとる */
+            justify-content: space-between; /* 左右に綺麗に配置 */
             position: relative;
             overflow: hidden;
         }
 
+        /* 幅を130pxにカチッと固定して、右側パネルを押し潰さないように修正 */
         .formula-area {
             font-size: 20px;
             font-weight: 700;
             color: #495057;
             letter-spacing: 0.5px;
-            flex-grow: 1;
+            width: 130px; 
+            flex-shrink: 0;
             text-align: left;
             padding-left: 6px;
             overflow-x: auto; 
             white-space: nowrap;
             transition: color 0.1s;
+            box-sizing: border-box;
         }
         .formula-area::-webkit-scrollbar { display: none; }
         
@@ -167,7 +170,7 @@
             color: #adb5bd !important;
         }
 
-        /* 一体型右側固定コンテナ：全体のバランスが崩れないよう配置 */
+        /* 右側の一体型固定コンテナ */
         .right-fixed-panel {
             display: flex;
             align-items: center;
@@ -882,7 +885,7 @@
 
                     let availableFactors = [...targetPrimeFactors];
                     usedIndices.forEach(i => availableFactors[i] = null);
-                    availableFactors = availableFactors.filter(v => f !== null);
+                    availableFactors = availableFactors.filter(v => v !== null);
 
                     let canInput = false;
                     if (isLastCharJoin) {
