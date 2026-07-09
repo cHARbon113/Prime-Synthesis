@@ -539,12 +539,10 @@
             targetPrimeFactors = computePrimeFactors(currentTarget);
         }
 
-        // 💡 【大改修】カードタップ時のトグル（追加・狙い撃ち消去）処理
         function clickPrimeCard(factor, appearanceOrder, isUsed) {
             if (currentMode !== "SYNTHESIS") return;
 
             if (!isUsed) {
-                // 【入力処理】
                 const { isLastCharSign, currentWritingStr } = analyzeFormula(inputStr);
                 const factorStr = String(factor);
 
@@ -560,15 +558,12 @@
                     }
                 }
             } else {
-                // 【トグル消去処理（パターンB：手前の符号巻き込み消去＋先頭クリーンアップ）】
-                // 式の中の全トークン（数字と符号）を分解
                 const tokens = inputStr.match(/(\d+|[＋－×÷])/g);
                 if (!tokens) return;
 
                 let matchCount = 0;
                 let targetTokenIndex = -1;
 
-                // 左から数えて「appearanceOrder番目の指定の数字」のインデックスを探す
                 for (let i = 0; i < tokens.length; i++) {
                     if (tokens[i] === String(factor)) {
                         matchCount++;
@@ -580,14 +575,12 @@
                 }
 
                 if (targetTokenIndex !== -1) {
-                    // パターンB: 手前の符号ごと消去する（ただし先頭の数字の場合は符号がないので数字だけ消す）
                     if (targetTokenIndex > 0 && ["＋", "－", "×", "÷"].includes(tokens[targetTokenIndex - 1])) {
-                        tokens.splice(targetTokenIndex - 1, 2); // 手前の符号と数字を削除
+                        tokens.splice(targetTokenIndex - 1, 2); 
                     } else {
-                        tokens.splice(targetTokenIndex, 1); // 先頭の数字自体を削除
+                        tokens.splice(targetTokenIndex, 1); 
                     }
 
-                    // 先頭に残ってしまった浮き符号を自動消去（クリーンアップ）
                     if (tokens.length > 0 && ["＋", "－", "×", "÷"].includes(tokens[0])) {
                         tokens.shift();
                     }
@@ -612,10 +605,8 @@
                 contentEl.className = "cards-wrapper";
                 contentEl.innerHTML = "";
 
-                // 各数字が「全体で何回目に出現するか」をカウントする用のマップ
                 let factorGlobalCounts = {};
                 
-                // 数式内で、実際に各数字が「何個使われているか」をカウント
                 const tokens = inputStr.match(/\d+/g) || [];
                 let currentFormulaCounts = {};
                 tokens.forEach(t => {
@@ -624,11 +615,9 @@
                 });
 
                 targetPrimeFactors.forEach((factor, idx) => {
-                    // この種類の数字が左から何枚目のカードであるかをインクリメント
                     factorGlobalCounts[factor] = (factorGlobalCounts[factor] || 0) + 1;
                     const thisCardOrder = factorGlobalCounts[factor];
 
-                    // 【左詰め判定】現在数式内にある個数以下であれば、左から順にusedにする
                     const isUsed = thisCardOrder <= (currentFormulaCounts[factor] || 0);
 
                     const card = document.createElement("div");
@@ -639,8 +628,11 @@
                         card.className += " used";
                     }
                     
-                    // カードを押した時、その数字の「数式上での登場順番（thisCardOrder）」を渡す
-                    card.onclick = () => clickPrimeCard(factor, thisCardOrder, isUsed);
+                    // 💡 動的引数バグの修正箇所：クリックされたその瞬間のクラスを判定する
+                    card.onclick = function() {
+                        const currentIsUsed = this.classList.contains("used");
+                        clickPrimeCard(factor, thisCardOrder, currentIsUsed);
+                    };
 
                     contentEl.appendChild(card);
                 });
@@ -659,7 +651,6 @@
             cursorSpan.className = "cursor"; cursorSpan.innerText = "|";
             formulaBox.appendChild(cursorSpan);
 
-            // 表示の更新（ここで左詰め処理が走ります）
             const usedIndices = getUsedCardsIndices(inputStr, targetPrimeFactors);
             renderInfoPanel(usedIndices);
 
