@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>素因数合成ゲーム</title>
+    <title>素因数合成ゲーム1</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -144,19 +144,18 @@
             min-height: 42px;
             display: flex;
             align-items: center;
-            justify-content: space-between; /* 両端に突っ張らせる設定を復活 */
+            justify-content: space-between;
             position: relative;
             overflow: hidden;
         }
 
-        /* 左側の数式エリア：潰れ防止の min-width を追加 */
         .formula-area {
             font-size: 20px;
             font-weight: 700;
             color: #495057;
             letter-spacing: 0.5px;
             flex: 1; 
-            min-width: 0; /* iOS等での異常な押し潰れを防ぐ */
+            min-width: 0; 
             text-align: left;
             padding-left: 6px;
             overflow-x: auto; 
@@ -170,7 +169,6 @@
             color: #adb5bd !important;
         }
 
-        /* 右側固定パネル：172pxの幅を常に維持 */
         .right-fixed-panel {
             display: flex;
             align-items: center;
@@ -308,9 +306,7 @@
 </head>
 <body>
 
-    <h1>素因数合成ゲーム</h1>
-
-    <div class="game-window">
+    <h1>素因数合成ゲーム1</h1> <div class="game-window">
         
         <div class="status-container">
             <div id="phase-display">フェーズ：お題設定</div>
