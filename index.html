@@ -144,17 +144,19 @@
             min-height: 42px;
             display: flex;
             align-items: center;
+            justify-content: space-between; /* 両端に突っ張らせる設定を復活 */
             position: relative;
             overflow: hidden;
         }
 
-        /* 左側の数式エリア：残りの可変スペースを自然に埋める */
+        /* 左側の数式エリア：潰れ防止の min-width を追加 */
         .formula-area {
             font-size: 20px;
             font-weight: 700;
             color: #495057;
             letter-spacing: 0.5px;
             flex: 1; 
+            min-width: 0; /* iOS等での異常な押し潰れを防ぐ */
             text-align: left;
             padding-left: 6px;
             overflow-x: auto; 
@@ -168,7 +170,7 @@
             color: #adb5bd !important;
         }
 
-        /* 右側固定パネル：常に172pxの幅を確保してレイアウトの崩れを防ぐ */
+        /* 右側固定パネル：172pxの幅を常に維持 */
         .right-fixed-panel {
             display: flex;
             align-items: center;
@@ -179,7 +181,6 @@
             box-sizing: border-box;
         }
 
-        /* display: none/flex の切り替えではなく、visibilityで制御してレイアウト位置を完全キープ */
         .realtime-result-wrapper {
             visibility: hidden; 
             display: flex;
@@ -766,7 +767,6 @@
             }
 
             if (currentMode === "SYNTHESIS") {
-                /* JS側の制御を display ではなく visibility に完全に統一 */
                 resultWrapper.style.visibility = "visible";
                 
                 opt1Btn.innerText = `□_□ ${hasJoinMode ? "①" : "⓪"}`;
@@ -841,7 +841,6 @@
                 }
             } else {
                 formulaBox.className = "formula-area";
-                /* 非表示の時も display: none ではなく visibility: hidden にすることで右側パネルの幅を維持 */
                 resultWrapper.style.visibility = "hidden"; 
                 invertBtn.style.visibility = "hidden"; 
 
@@ -887,7 +886,7 @@
 
                     let availableFactors = [...targetPrimeFactors];
                     usedIndices.forEach(i => availableFactors[i] = null);
-                    availableFactors = availableFactors.filter(v => v !== null); // タイポ修正
+                    availableFactors = availableFactors.filter(v => v !== null);
 
                     let canInput = false;
                     if (isLastCharJoin) {
