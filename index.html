@@ -29,6 +29,74 @@
             margin: 0 auto;
         }
 
+        /* --- 開始前設定画面のスタイル --- */
+        .config-screen {
+            background: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .config-section-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #495057;
+            margin: 14px 0 6px 0;
+        }
+        .config-section-title:first-child { margin-top: 0; }
+        
+        .config-btn-group {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .config-btn {
+            flex: 1;
+            height: 36px;
+            font-size: 13px;
+            font-weight: bold;
+            border: 1px solid #ced4da;
+            background: #fff;
+            color: #495057;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        /* 桁数選択時のブルー（光なし） */
+        .config-btn.selected-blue {
+            background: #e7f5ff !important;
+            border-color: #74c0fc !important;
+            color: #1c7ed6 !important;
+        }
+        /* 特殊ボタンON時の薄いオレンジ（光なし） */
+        .config-btn.selected-orange {
+            background: #fff4e6 !important;
+            border-color: #ffd8a8 !important;
+            color: #f76707 !important;
+        }
+        /* シンプルなゲーム開始ボタン */
+        .start-btn {
+            width: 100%;
+            height: 42px;
+            margin-top: 20px;
+            background: #2b8a3e;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .start-btn:active {
+            background: #237032;
+        }
+
+        /* --- ゲームメイン画面のスタイル --- */
+        .main-game-screen {
+            display: none; /* 最初は非表示、JSで制御 */
+        }
+
         .status-container {
             width: 100%;
             font-size: 12px;
@@ -227,20 +295,28 @@
             flex-shrink: 0;
             margin-left: 6px;
         }
-        .invert-btn-area:disabled {
+        .invert-btn-area:disabled, #btn-opt1:disabled, #btn-opt2:disabled {
             background: #f1f3f5 !important;
             color: #adb5bd !important;
             cursor: not-allowed !important;
             border-color: #dee2e6 !important;
             box-shadow: none !important;
+        }
+
+        /* 特殊ボタン（反転・結合・二乗）が使えるときの共通の薄いオレンジ（光エフェクトなし） */
+        .invert-btn-area.ready-orange, #btn-opt1.ready-orange, #btn-opt2.ready-orange {
             background: #fff4e6 !important;
             border-color: #ffd8a8 !important;
             color: #f76707 !important;
+            box-shadow: none !important;
         }
+        
+        /* 反転ボタン押下後（反転中）の濃いオレンジ（光エフェクトなし） */
         .invert-btn-area.active {
-            background: #e67e22 !important;
+            background: #f76707 !important;
             color: #fff !important;
-            border-color: #d35400 !important;
+            border-color: #e8590c !important;
+            box-shadow: none !important;
         }
 
         .cursor {
@@ -298,60 +374,93 @@
 
     <div class="game-window">
         
-        <div class="status-container">
-            <div id="phase-display">フェーズ：お題設定</div>
-            <div id="msg-display">数字を入力してください</div>
-        </div>
-
-        <div class="log-container" id="log-box"></div>
-
-        <div class="info-panel-container" id="info-panel">
-            <div class="panel-label" id="panel-title">現在のお題</div>
-            <div id="panel-content" class="target-number">----</div>
-        </div>
-
-        <div class="input-container">
-            <div id="formula-box" class="formula-area"></div>
-            <div id="result-wrapper" class="realtime-result-wrapper">
-                <div id="result-blue-box" class="result-blue-box">= ---</div>
-                <div id="result-sub-scroll" class="result-sub-scroll"></div>
+        <div id="screen-config" class="config-screen">
+            <div class="config-section-title">■ お題の桁数</div>
+            <div class="config-btn-group">
+                <button type="button" id="cfg-digit-3" class="config-btn" onclick="selectConfigDigit(3)">3桁</button>
+                <button type="button" id="cfg-digit-4" class="config-btn selected-blue" onclick="selectConfigDigit(4)">4桁</button>
+                <button type="button" id="cfg-digit-5" class="config-btn" onclick="selectConfigDigit(5)">5桁</button>
             </div>
-            <button id="btn-invert" class="invert-btn-area" onclick="toggleInvert()">⟳</button>
+
+            <div class="config-section-title">■ 特殊アクションの有効化</div>
+            <div class="config-btn-group">
+                <button type="button" id="cfg-action-invert" class="config-btn selected-orange" onclick="toggleConfigAction('invert')">反転 ⟳</button>
+                <button type="button" id="cfg-action-join" class="config-btn selected-orange" onclick="toggleConfigAction('join')">結合 ＿</button>
+                <button type="button" id="cfg-action-power" class="config-btn selected-orange" onclick="toggleConfigAction('power')">二乗 ²</button>
+            </div>
+
+            <button type="button" class="start-btn" onclick="startGame()">ゲームを開始する</button>
         </div>
 
-        <div class="keyboard-container">
-            <button id="btn-7" class="btn-common" onclick="pressNum('7')">7</button>
-            <button id="btn-8" class="btn-common" onclick="pressNum('8')">8</button>
-            <button id="btn-9" class="btn-common" onclick="pressNum('9')">9</button>
-            <button id="btn-div" class="btn-common sign-btn" data-sign="÷" onclick="pressNum('÷')">÷</button>
-            <button id="btn-opt1" class="btn-common" onclick="pressOpt1()">降参</button>
+        <div id="screen-game" class="main-game-screen">
             
-            <button id="btn-4" class="btn-common" onclick="pressNum('4')">4</button>
-            <button id="btn-5" class="btn-common" onclick="pressNum('5')">5</button>
-            <button id="btn-6" class="btn-common" onclick="pressNum('6')">6</button>
-            <button id="btn-times" class="btn-common sign-btn" data-sign="×" onclick="pressNum('×')">×</button>
-            <button id="btn-opt2" class="btn-common" onclick="pressOpt2()">パス</button>
+            <div class="status-container">
+                <div id="phase-display">フェーズ：お題設定</div>
+                <div id="msg-display">数字を入力してください</div>
+            </div>
+
+            <div class="log-container" id="log-box"></div>
+
+            <div class="info-panel-container" id="info-panel">
+                <div class="panel-label" id="panel-title">現在のお題</div>
+                <div id="panel-content" class="target-number">----</div>
+            </div>
+
+            <div class="input-container">
+                <div id="formula-box" class="formula-area"></div>
+                <div id="result-wrapper" class="realtime-result-wrapper">
+                    <div id="result-blue-box" class="result-blue-box">= ---</div>
+                    <div id="result-sub-scroll" class="result-sub-scroll"></div>
+                </div>
+                <button id="btn-invert" class="invert-btn-area" onclick="toggleInvert()">⟳</button>
+            </div>
+
+            <div class="keyboard-container">
+                <button id="btn-7" class="btn-common" onclick="pressNum('7')">7</button>
+                <button id="btn-8" class="btn-common" onclick="pressNum('8')">8</button>
+                <button id="btn-9" class="btn-common" onclick="pressNum('9')">9</button>
+                <button id="btn-div" class="btn-common sign-btn" data-sign="÷" onclick="pressNum('÷')">÷</button>
+                <button id="btn-opt1" class="btn-common" onclick="pressOpt1()">降参</button>
+                
+                <button id="btn-4" class="btn-common" onclick="pressNum('4')">4</button>
+                <button id="btn-5" class="btn-common" onclick="pressNum('5')">5</button>
+                <button id="btn-6" class="btn-common" onclick="pressNum('6')">6</button>
+                <button id="btn-times" class="btn-common sign-btn" data-sign="×" onclick="pressNum('×')">×</button>
+                <button id="btn-opt2" class="btn-common" onclick="pressOpt2()">パス</button>
+                
+                <button id="btn-1" class="btn-common" onclick="pressNum('1')">1</button>
+                <button id="btn-2" class="btn-common" onclick="pressNum('2')">2</button>
+                <button id="btn-3" class="btn-common" onclick="pressNum('3')">3</button>
+                <button id="btn-minus" class="btn-common sign-btn" data-sign="－" onclick="pressNum('－')">－</button>
+                <button id="btn-enter" class="btn-enter-size" onclick="pressEnter()">決定</button>
+                
+                <button id="btn-clear" class="btn-common" onclick="pressClear()">C</button>
+                <button id="btn-0" class="btn-common" onclick="pressNum('0')">0</button>
+                <button id="btn-back" class="btn-common" onclick="pressBack()">◀︎</button>
+                <button id="btn-plus" class="btn-common sign-btn" data-sign="＋" onclick="pressNum('＋')">＋</button>
+            </div>
             
-            <button id="btn-1" class="btn-common" onclick="pressNum('1')">1</button>
-            <button id="btn-2" class="btn-common" onclick="pressNum('2')">2</button>
-            <button id="btn-3" class="btn-common" onclick="pressNum('3')">3</button>
-            <button id="btn-minus" class="btn-common sign-btn" data-sign="－" onclick="pressNum('－')">－</button>
-            <button id="btn-enter" class="btn-enter-size" onclick="pressEnter()">決定</button>
-            
-            <button id="btn-clear" class="btn-common" onclick="pressClear()">C</button>
-            <button id="btn-0" class="btn-common" onclick="pressNum('0')">0</button>
-            <button id="btn-back" class="btn-common" onclick="pressBack()">◀︎</button>
-            <button id="btn-plus" class="btn-common sign-btn" data-sign="＋" onclick="pressNum('＋')">＋</button>
         </div>
         
     </div>
 
     <script>
+        // 設定画面用の一時的な状態
+        let selectedDigit = 4;
+        let actionSettings = {
+            invert: true,
+            join: true,
+            power: true
+        };
+
+        // 実際のゲーム設定（ゲーム開始時に上書き）
         const GAME_SETTING = {
             LIMIT_DIGITS: 4,      
             MIN_TARGET: 0,         
             MAX_TARGET: 9999,
-            ENABLE_INVERT: true, 
+            ENABLE_INVERT: true,
+            ENABLE_JOIN: true,
+            ENABLE_POWER: true
         };
 
         const CONFIG = {
@@ -361,7 +470,7 @@
                 SYNTHESIS: "フェーズ：素因数合成"
             },
             MSG_INSTRUCT: {
-                SETUP: `お題となる数字（最大${GAME_SETTING.LIMIT_DIGITS}桁）を入力してください`,
+                SETUP: "", // 動的に生成
                 DECOMPOSE: "お題を素因数分解してください",
                 SYNTHESIS: "すべてのカードを使い切る数式を入力してください"
             }
@@ -378,6 +487,50 @@
         let hasPowerOfTwo = true; 
         let hasJoinMode = true;   
 
+        /* --- 設定画面用関数 --- */
+        function selectConfigDigit(digit) {
+            selectedDigit = digit;
+            [3, 4, 5].forEach(d => {
+                const btn = document.getElementById(`cfg-digit-${d}`);
+                if (d === digit) {
+                    btn.classList.add("selected-blue");
+                } else {
+                    btn.classList.remove("selected-blue");
+                }
+            });
+        }
+
+        function toggleConfigAction(actionKey) {
+            actionSettings[actionKey] = !actionSettings[actionKey];
+            const btn = document.getElementById(`cfg-action-${actionKey}`);
+            if (actionSettings[actionKey]) {
+                btn.classList.add("selected-orange");
+            } else {
+                btn.classList.remove("selected-orange");
+            }
+        }
+
+        function startGame() {
+            // 画面で選ばれた値をゲーム用設定に反映
+            GAME_SETTING.LIMIT_DIGITS = selectedDigit;
+            GAME_SETTING.MIN_TARGET = 0;
+            GAME_SETTING.MAX_TARGET = Math.pow(10, selectedDigit) - 1; // 999 or 9999 or 99999
+            GAME_SETTING.ENABLE_INVERT = actionSettings.invert;
+            GAME_SETTING.ENABLE_JOIN = actionSettings.join;
+            GAME_SETTING.ENABLE_POWER = actionSettings.power;
+
+            // 説明文を桁数に合わせて更新
+            CONFIG.MSG_INSTRUCT.SETUP = `お題となる数字（最大${GAME_SETTING.LIMIT_DIGITS}桁）を入力してください`;
+
+            // 画面を切り替える
+            document.getElementById("screen-config").style.display = "none";
+            document.getElementById("screen-game").style.display = "block";
+
+            // ゲーム初期化
+            resetToSetup();
+        }
+
+        /* --- ゲーム本編用関数 --- */
         function getInitialZeroStr() {
             return "0".repeat(GAME_SETTING.LIMIT_DIGITS);
         }
@@ -534,7 +687,6 @@
             return playerFactors.every((val, index) => val === sortedCorrect[index]);
         }
 
-        // 結合記号"_"を跨ぐ数字も個別のカードとしてカウントできるよう修正
         function getUsedCardsIndices(formulaStr, correctFactors) {
             const tokens = formulaStr.match(/\d+/g) || [];
             let sortedInputNums = tokens.map(n => parseInt(n, 10)).sort((a, b) => b - a);
@@ -673,7 +825,6 @@
                     inputStr = tokens.join("");
                 }
             }
-            // 文字数が完全になくなった、もしくは反転モードの維持条件を満たさない場合はリセット
             if (inputStr === "") {
                 isInvertedState = false;
             }
@@ -777,18 +928,19 @@
             if (currentMode === "SYNTHESIS") {
                 resultWrapper.style.display = "flex";
                 
-                opt1Btn.innerText = `□_□ ${hasJoinMode ? "①" : "⓪"}`;
-                opt2Btn.innerText = `□² ${hasPowerOfTwo ? "①" : "⓪"}`;
+                // 設定に応じたボタンのテキスト変更（無効化時はハイフンなど）
+                opt1Btn.innerText = GAME_SETTING.ENABLE_JOIN ? `□_□ ${hasJoinMode ? "①" : "⓪"}` : "---";
+                opt2Btn.innerText = GAME_SETTING.ENABLE_POWER ? `□² ${hasPowerOfTwo ? "①" : "⓪"}` : "---";
 
                 let calcVal = calculateLeftToRight(inputStr);
                 let absoluteVal = Math.abs(calcVal);
                 let fullResultStr = formatWithDigits(absoluteVal);
 
-                const isOverDigits = fullResultStr.length > 4;
+                const isOverDigits = fullResultStr.length > GAME_SETTING.LIMIT_DIGITS;
 
                 if (isOverDigits) {
-                    resultBlueBox.innerText = `= ${fullResultStr.slice(0, 4)}`;
-                    resultSubScroll.innerText = fullResultStr.slice(4);
+                    resultBlueBox.innerText = `= ${fullResultStr.slice(0, GAME_SETTING.LIMIT_DIGITS)}`;
+                    resultSubScroll.innerText = fullResultStr.slice(GAME_SETTING.LIMIT_DIGITS);
                     resultSubScroll.style.width = "45px";
                     resultSubScroll.style.marginLeft = "5px";
                     resultSubScroll.scrollLeft = 0;
@@ -799,27 +951,28 @@
                     resultSubScroll.style.marginLeft = "0";
                 }
 
-                opt1Btn.classList.remove("ready-to-use");
-                opt2Btn.classList.remove("ready-to-use");
+                opt1Btn.classList.remove("ready-orange");
+                opt2Btn.classList.remove("ready-orange");
+                invertBtn.classList.remove("ready-orange", "active");
+                formulaBox.classList.remove("formula-grayout");
 
                 const hasUnusedCards = allUsedIndices.length < targetPrimeFactors.length;
                 
-                if (hasJoinMode && isCardCompleted && hasUnusedCards && !isLastCharPower) {
-                    opt1Btn.classList.add("ready-to-use");
+                // 結合ボタンの制御
+                if (GAME_SETTING.ENABLE_JOIN && hasJoinMode && isCardCompleted && hasUnusedCards && !isLastCharPower) {
+                    opt1Btn.classList.add("ready-orange");
                     opt1Btn.disabled = false;
                 } else {
-                    opt1Btn.disabled = !hasJoinMode || !isCardCompleted || !hasUnusedCards || isLastCharPower;
+                    opt1Btn.disabled = true;
                 }
 
-                if (hasPowerOfTwo && isCardCompleted && !isLastCharPower) {
-                    opt2Btn.classList.add("ready-to-use");
+                // 二乗ボタンの制御
+                if (GAME_SETTING.ENABLE_POWER && hasPowerOfTwo && isCardCompleted && !isLastCharPower) {
+                    opt2Btn.classList.add("ready-orange");
                     opt2Btn.disabled = false;
                 } else {
-                    opt2Btn.disabled = !hasPowerOfTwo || !isCardCompleted || isLastCharPower;
+                    opt2Btn.disabled = true;
                 }
-
-                invertBtn.classList.remove("ready-to-use", "active");
-                formulaBox.classList.remove("formula-grayout");
 
                 const isReady = (allUsedIndices.length === targetPrimeFactors.length) && !isLastCharSign && !isLastCharJoin;
 
@@ -835,18 +988,21 @@
                 }
 
                 if (!isOverDigits) {
-                    invertBtn.disabled = !isReady;
                     if (isReady) {
+                        invertBtn.disabled = false;
                         if (isInvertedState) {
                             absoluteVal = GAME_SETTING.MAX_TARGET - absoluteVal;
-                            invertBtn.classList.add("active");
+                            invertBtn.classList.add("active"); 
                             invertBtn.innerText = "⟲"; 
                             formulaBox.classList.add("formula-grayout"); 
                             resultBlueBox.innerText = `= ${formatWithDigits(absoluteVal)}`;
                         } else {
-                            invertBtn.classList.add("ready-to-use"); 
+                            invertBtn.classList.add("ready-orange"); 
                             invertBtn.innerText = "⟳"; 
                         }
+                    } else {
+                        invertBtn.disabled = true;
+                        invertBtn.innerText = "⟳";
                     }
                 }
             } else {
@@ -855,8 +1011,8 @@
 
                 opt1Btn.innerText = "降参"; opt1Btn.disabled = false;
                 opt2Btn.innerText = "パス"; opt2Btn.disabled = false;
-                opt1Btn.classList.remove("ready-to-use");
-                opt2Btn.classList.remove("ready-to-use");
+                opt1Btn.classList.remove("ready-orange");
+                opt2Btn.classList.remove("ready-orange");
             }
 
             const enterBtn = document.getElementById("btn-enter");
@@ -956,7 +1112,7 @@
                 if (currentMode === "SYNTHESIS") {
                     hasPowerOfTwo = true;
                     hasJoinMode = true;
-                    isInvertedState = false; // 反転状態もクリア
+                    isInvertedState = false; 
                 }
             }
             updateUI(); 
@@ -976,7 +1132,6 @@
                     hasJoinMode = false;
                 }
             }
-            // 文字列が空になったら反転状態も自動解除
             if (inputStr === "") {
                 isInvertedState = false;
             }
@@ -1016,7 +1171,7 @@
                 let resultVal = calculateLeftToRight(inputStr);
                 let fullResultStr = formatWithDigits(Math.abs(resultVal));
                 
-                let finalAbsoluteVal = parseInt(fullResultStr.slice(0, 4), 10);
+                let finalAbsoluteVal = parseInt(fullResultStr.slice(0, GAME_SETTING.LIMIT_DIGITS), 10);
                 let originalAbsoluteVal = formatWithDigits(Math.abs(resultVal));
 
                 if (GAME_SETTING.ENABLE_INVERT && isInvertedState) {
@@ -1031,8 +1186,6 @@
             updateStatusDisplay();
             updateUI();
         }
-
-        window.onload = () => { resetToSetup(); }; 
     </script>
 </body>
 </html>
