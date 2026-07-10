@@ -148,7 +148,6 @@
             overflow: hidden;
         }
 
-        /* 文字サイズを大きめ（元サイズ付近）に戻しつつ、スクロールに対応 */
         .formula-area {
             font-size: 20px;
             font-weight: 700;
@@ -163,21 +162,23 @@
         }
         .formula-area::-webkit-scrollbar { display: none; }
         
+        .formula-area.setup-mode {
+            text-align: center;
+            padding-left: 0;
+        }
+
         .formula-area.formula-grayout {
             color: #adb5bd !important;
         }
 
-        /* 結果エリアの親パーツ：幅を130pxに完全固定（内訳：青枠80px ＋ 溢れ枠45px ＋ マージン等） */
         .realtime-result-wrapper {
             display: none;
             align-items: center;
             flex-shrink: 0;
-            width: 130px; 
             margin-left: 4px;
             box-sizing: border-box;
         }
 
-        /* 青枠：4桁(= 0000)が絶対にブレずに固定されるよう幅を80pxに固定 */
         .result-blue-box {
             background: #e7f5ff;
             border: 1px solid #a5d8ff;
@@ -195,7 +196,6 @@
             box-sizing: border-box;
         }
 
-        /* はみ出た桁数表示：ちょうど4桁分くらい（45px）が見える固定サイズ。超えたらスクロール */
         .result-sub-scroll {
             color: #adb5bd;
             font-size: 16px;
@@ -233,8 +233,6 @@
             cursor: not-allowed !important;
             border-color: #dee2e6 !important;
             box-shadow: none !important;
-        }
-        .invert-btn-area.ready-to-use, .btn-common.ready-to-use {
             background: #fff4e6 !important;
             border-color: #ffd8a8 !important;
             color: #f76707 !important;
@@ -278,7 +276,6 @@
             user-select: none;
             -webkit-user-select: none;
         }
-        /* 大技ボタンの文字サイズ調整 */
         #btn-opt1, #btn-opt2 {
             font-size: 11px;
         }
@@ -310,7 +307,7 @@
 
         <div class="info-panel-container" id="info-panel">
             <div class="panel-label" id="panel-title">現在のお題</div>
-            <div id="panel-content" class="target-number">---</div>
+            <div id="panel-content" class="target-number">----</div>
         </div>
 
         <div class="input-container">
@@ -383,6 +380,10 @@
 
         function getInitialZeroStr() {
             return "0".repeat(GAME_SETTING.LIMIT_DIGITS);
+        }
+
+        function getInitialHyphenStr() {
+            return "-".repeat(GAME_SETTING.LIMIT_DIGITS);
         }
 
         function formatWithDigits(num) {
@@ -533,6 +534,7 @@
             return playerFactors.every((val, index) => val === sortedCorrect[index]);
         }
 
+        // 結合記号"_"を跨ぐ数字も個別のカードとしてカウントできるよう修正
         function getUsedCardsIndices(formulaStr, correctFactors) {
             const tokens = formulaStr.match(/\d+/g) || [];
             let sortedInputNums = tokens.map(n => parseInt(n, 10)).sort((a, b) => b - a);
@@ -671,6 +673,10 @@
                     inputStr = tokens.join("");
                 }
             }
+            // 文字数が完全になくなった、もしくは反転モードの維持条件を満たさない場合はリセット
+            if (inputStr === "") {
+                isInvertedState = false;
+            }
             updateUI();
         }
 
@@ -681,7 +687,7 @@
             if (currentMode === "SETUP" || currentMode === "DECOMPOSE") {
                 titleEl.innerText = "現在のお題";
                 contentEl.className = "target-number";
-                contentEl.innerText = currentTarget ? formatWithDigits(currentTarget) : "---";
+                contentEl.innerText = currentTarget ? formatWithDigits(currentTarget) : getInitialHyphenStr();
             } 
             else if (currentMode === "SYNTHESIS") {
                 titleEl.innerText = "所持素因数カード";
@@ -738,26 +744,39 @@
             cursorSpan.className = "cursor"; cursorSpan.innerText = "|";
             formulaBox.appendChild(cursorSpan);
 
-            formulaBox.scrollLeft = formulaBox.scrollWidth;
-
-            const usedIndices = getUsedCardsIndices(inputStr, targetPrimeFactors);
-            renderInfoPanel(usedIndices);
+            if (currentMode === "SETUP") {
+                formulaBox.classList.add("setup-mode");
+            } else {
+                formulaBox.classList.remove("setup-mode");
+                formulaBox.scrollLeft = formulaBox.scrollWidth;
+            }
 
             const { isLastCharSign, isLastCharPower, isLastCharJoin, currentWritingStr } = analyzeFormula(inputStr);
+            
+            let baseFormulaStr = inputStr;
+            if (currentWritingStr !== "") {
+                baseFormulaStr = inputStr.slice(0, -currentWritingStr.length);
+            }
+            const baseUsedIndices = getUsedCardsIndices(baseFormulaStr, targetPrimeFactors);
 
-            // 「直前の数」がカードとして成立しているか、または「すでに二乗されているか」を判定
+            let baseAvailableFactors = [...targetPrimeFactors];
+            baseUsedIndices.forEach(i => baseAvailableFactors[i] = null);
+            baseAvailableFactors = baseAvailableFactors.filter(v => v !== null);
+
+            const allUsedIndices = getUsedCardsIndices(inputStr, targetPrimeFactors);
+            renderInfoPanel(allUsedIndices);
+
             let isCardCompleted = false;
             if (isLastCharPower) {
-                isCardCompleted = true; // 二乗された直後もカード確定状態として扱う（不具合修正）
+                isCardCompleted = true; 
             } else if (currentWritingStr !== "") {
                 const parsedNum = parseInt(currentWritingStr, 10);
-                isCardCompleted = targetPrimeFactors.includes(parsedNum);
+                isCardCompleted = baseAvailableFactors.includes(parsedNum);
             }
 
             if (currentMode === "SYNTHESIS") {
                 resultWrapper.style.display = "flex";
                 
-                // ボタン表記のビジュアルを分かりやすくアップデート
                 opt1Btn.innerText = `□_□ ${hasJoinMode ? "①" : "⓪"}`;
                 opt2Btn.innerText = `□² ${hasPowerOfTwo ? "①" : "⓪"}`;
 
@@ -770,21 +789,21 @@
                 if (isOverDigits) {
                     resultBlueBox.innerText = `= ${fullResultStr.slice(0, 4)}`;
                     resultSubScroll.innerText = fullResultStr.slice(4);
-                    resultSubScroll.style.display = "block";
-                    // 溢れ桁が追加されたら右端に自動スクロール
+                    resultSubScroll.style.width = "45px";
+                    resultSubScroll.style.marginLeft = "5px";
                     resultSubScroll.scrollLeft = 0;
                 } else {
                     resultBlueBox.innerText = `= ${fullResultStr}`;
                     resultSubScroll.innerText = "";
-                    resultSubScroll.style.display = "none";
+                    resultSubScroll.style.width = "0";
+                    resultSubScroll.style.marginLeft = "0";
                 }
 
                 opt1Btn.classList.remove("ready-to-use");
                 opt2Btn.classList.remove("ready-to-use");
 
-                const hasUnusedCards = usedIndices.length < targetPrimeFactors.length;
+                const hasUnusedCards = allUsedIndices.length < targetPrimeFactors.length;
                 
-                // 二乗の直後は連続結合不可
                 if (hasJoinMode && isCardCompleted && hasUnusedCards && !isLastCharPower) {
                     opt1Btn.classList.add("ready-to-use");
                     opt1Btn.disabled = false;
@@ -792,7 +811,6 @@
                     opt1Btn.disabled = !hasJoinMode || !isCardCompleted || !hasUnusedCards || isLastCharPower;
                 }
 
-                // 二乗の直後は連続二乗不可
                 if (hasPowerOfTwo && isCardCompleted && !isLastCharPower) {
                     opt2Btn.classList.add("ready-to-use");
                     opt2Btn.disabled = false;
@@ -803,7 +821,7 @@
                 invertBtn.classList.remove("ready-to-use", "active");
                 formulaBox.classList.remove("formula-grayout");
 
-                const isReady = (usedIndices.length === targetPrimeFactors.length) && !isLastCharSign && !isLastCharJoin;
+                const isReady = (allUsedIndices.length === targetPrimeFactors.length) && !isLastCharSign && !isLastCharJoin;
 
                 if (GAME_SETTING.ENABLE_INVERT && !isOverDigits) {
                     invertBtn.style.display = "flex"; 
@@ -832,7 +850,6 @@
                     }
                 }
             } else {
-                formulaBox.className = "formula-area";
                 resultWrapper.style.display = "none"; 
                 invertBtn.style.display = "none"; 
 
@@ -842,16 +859,14 @@
                 opt2Btn.classList.remove("ready-to-use");
             }
 
-            // 決定ボタン
             const enterBtn = document.getElementById("btn-enter");
             if (currentMode === "SYNTHESIS") {
-                enterBtn.disabled = (usedIndices.length < targetPrimeFactors.length) || isLastCharSign || isLastCharJoin;
+                enterBtn.disabled = (allUsedIndices.length < targetPrimeFactors.length) || isLastCharSign || isLastCharJoin;
             } else {
                 enterBtn.disabled = (inputStr === "" || isLastCharSign);
             }
 
-            // 演算符号
-            const isSignAllowed = isCardCompleted && (usedIndices.length < targetPrimeFactors.length);
+            const isSignAllowed = isCardCompleted && (allUsedIndices.length < targetPrimeFactors.length);
 
             document.querySelectorAll(".sign-btn").forEach(btn => {
                 const btnSign = btn.getAttribute("data-sign");
@@ -864,7 +879,10 @@
                 }
             });
 
-            // テンキー数字
+            let realAvailableFactors = [...targetPrimeFactors];
+            allUsedIndices.forEach(i => realAvailableFactors[i] = null);
+            realAvailableFactors = realAvailableFactors.filter(v => v !== null);
+
             const numButtons = ["0","1","2","3","4","5","6","7","8","9"];
             numButtons.forEach(num => {
                 const btn = document.getElementById(`btn-${num}`);
@@ -879,18 +897,15 @@
                         return;
                     }
 
-                    let availableFactors = [...targetPrimeFactors];
-                    usedIndices.forEach(i => availableFactors[i] = null);
-                    availableFactors = availableFactors.filter(v => v !== null);
-
                     let canInput = false;
                     if (isLastCharJoin) {
-                        canInput = availableFactors.some(f => String(f).startsWith(num));
+                        canInput = realAvailableFactors.some(f => String(f).startsWith(num));
                     } else if (currentWritingStr === "") {
-                        canInput = availableFactors.some(f => String(f).startsWith(num));
+                        canInput = realAvailableFactors.some(f => String(f).startsWith(num));
                     } else {
                         const nextTargetStr = currentWritingStr + num;
-                        canInput = availableFactors.some(f => String(f).startsWith(nextTargetStr));
+                        canInput = realAvailableFactors.some(f => String(f).startsWith(nextTargetStr)) || 
+                                   (baseAvailableFactors.includes(parseInt(currentWritingStr, 10)) && realAvailableFactors.some(f => String(f).startsWith(num)));
                     }
                     btn.disabled = !canInput;
                 } 
@@ -941,6 +956,7 @@
                 if (currentMode === "SYNTHESIS") {
                     hasPowerOfTwo = true;
                     hasJoinMode = true;
+                    isInvertedState = false; // 反転状態もクリア
                 }
             }
             updateUI(); 
@@ -959,6 +975,10 @@
                 if (inputStr.slice(-1) === "_") {
                     hasJoinMode = false;
                 }
+            }
+            // 文字列が空になったら反転状態も自動解除
+            if (inputStr === "") {
+                isInvertedState = false;
             }
             updateUI(); 
         }
