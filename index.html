@@ -63,13 +63,13 @@
             cursor: pointer;
             transition: all 0.1s;
         }
-        /* 桁数選択時のブルー（光なし） */
+        /* 桁数選択時のブルー */
         .config-btn.selected-blue {
             background: #e7f5ff !important;
             border-color: #74c0fc !important;
             color: #1c7ed6 !important;
         }
-        /* 特殊ボタンON時の薄いオレンジ（光なし） */
+        /* 特殊ボタンON時の薄いオレンジ */
         .config-btn.selected-orange {
             background: #fff4e6 !important;
             border-color: #ffd8a8 !important;
@@ -94,7 +94,7 @@
 
         /* --- ゲームメイン画面のスタイル --- */
         .main-game-screen {
-            display: none; /* 最初は非表示、JSで制御 */
+            display: none; 
         }
 
         .status-container {
@@ -303,7 +303,7 @@
             box-shadow: none !important;
         }
 
-        /* 特殊ボタン（反転・結合・二乗）が使えるときの共通の薄いオレンジ（光エフェクトなし） */
+        /* 特殊ボタンが使えるときの共通の薄いオレンジ */
         .invert-btn-area.ready-orange, #btn-opt1.ready-orange, #btn-opt2.ready-orange {
             background: #fff4e6 !important;
             border-color: #ffd8a8 !important;
@@ -311,7 +311,7 @@
             box-shadow: none !important;
         }
         
-        /* 反転ボタン押下後（反転中）の濃いオレンジ（光エフェクトなし） */
+        /* 反転ボタン押下後（反転中）の濃いオレンジ */
         .invert-btn-area.active {
             background: #f76707 !important;
             color: #fff !important;
@@ -445,7 +445,6 @@
     </div>
 
     <script>
-        // 設定画面用の一時的な状態
         let selectedDigit = 4;
         let actionSettings = {
             invert: true,
@@ -453,7 +452,6 @@
             power: true
         };
 
-        // 実際のゲーム設定（ゲーム開始時に上書き）
         const GAME_SETTING = {
             LIMIT_DIGITS: 4,      
             MIN_TARGET: 0,         
@@ -470,7 +468,7 @@
                 SYNTHESIS: "フェーズ：素因数合成"
             },
             MSG_INSTRUCT: {
-                SETUP: "", // 動的に生成
+                SETUP: "", 
                 DECOMPOSE: "お題を素因数分解してください",
                 SYNTHESIS: "すべてのカードを使い切る数式を入力してください"
             }
@@ -487,7 +485,6 @@
         let hasPowerOfTwo = true; 
         let hasJoinMode = true;   
 
-        /* --- 設定画面用関数 --- */
         function selectConfigDigit(digit) {
             selectedDigit = digit;
             [3, 4, 5].forEach(d => {
@@ -511,26 +508,21 @@
         }
 
         function startGame() {
-            // 画面で選ばれた値をゲーム用設定に反映
             GAME_SETTING.LIMIT_DIGITS = selectedDigit;
             GAME_SETTING.MIN_TARGET = 0;
-            GAME_SETTING.MAX_TARGET = Math.pow(10, selectedDigit) - 1; // 999 or 9999 or 99999
+            GAME_SETTING.MAX_TARGET = Math.pow(10, selectedDigit) - 1; 
             GAME_SETTING.ENABLE_INVERT = actionSettings.invert;
             GAME_SETTING.ENABLE_JOIN = actionSettings.join;
             GAME_SETTING.ENABLE_POWER = actionSettings.power;
 
-            // 説明文を桁数に合わせて更新
             CONFIG.MSG_INSTRUCT.SETUP = `お題となる数字（最大${GAME_SETTING.LIMIT_DIGITS}桁）を入力してください`;
 
-            // 画面を切り替える
             document.getElementById("screen-config").style.display = "none";
             document.getElementById("screen-game").style.display = "block";
 
-            // ゲーム初期化
             resetToSetup();
         }
 
-        /* --- ゲーム本編用関数 --- */
         function getInitialZeroStr() {
             return "0".repeat(GAME_SETTING.LIMIT_DIGITS);
         }
@@ -552,6 +544,10 @@
             isInvertedState = false; 
             hasPowerOfTwo = true;
             hasJoinMode = true;
+            
+            // 明示的にグレーアウトを解除
+            document.getElementById("formula-box").classList.remove("formula-grayout");
+            
             updateStatusDisplay();
             updateUI();
         }
@@ -928,7 +924,6 @@
             if (currentMode === "SYNTHESIS") {
                 resultWrapper.style.display = "flex";
                 
-                // 設定に応じたボタンのテキスト変更（無効化時はハイフンなど）
                 opt1Btn.innerText = GAME_SETTING.ENABLE_JOIN ? `□_□ ${hasJoinMode ? "①" : "⓪"}` : "---";
                 opt2Btn.innerText = GAME_SETTING.ENABLE_POWER ? `□² ${hasPowerOfTwo ? "①" : "⓪"}` : "---";
 
@@ -958,7 +953,6 @@
 
                 const hasUnusedCards = allUsedIndices.length < targetPrimeFactors.length;
                 
-                // 結合ボタンの制御
                 if (GAME_SETTING.ENABLE_JOIN && hasJoinMode && isCardCompleted && hasUnusedCards && !isLastCharPower) {
                     opt1Btn.classList.add("ready-orange");
                     opt1Btn.disabled = false;
@@ -966,7 +960,6 @@
                     opt1Btn.disabled = true;
                 }
 
-                // 二乗ボタンの制御
                 if (GAME_SETTING.ENABLE_POWER && hasPowerOfTwo && isCardCompleted && !isLastCharPower) {
                     opt2Btn.classList.add("ready-orange");
                     opt2Btn.disabled = false;
@@ -1013,6 +1006,7 @@
                 opt2Btn.innerText = "パス"; opt2Btn.disabled = false;
                 opt1Btn.classList.remove("ready-orange");
                 opt2Btn.classList.remove("ready-orange");
+                formulaBox.classList.remove("formula-grayout"); // 合成フェーズ以外では絶対にかけない
             }
 
             const enterBtn = document.getElementById("btn-enter");
@@ -1179,6 +1173,11 @@
                 }
 
                 processNextTarget(finalAbsoluteVal, "プレイヤー", (GAME_SETTING.ENABLE_INVERT && isInvertedState) ? originalAbsoluteVal : null);
+                
+                // 次のフェーズに移るため、反転状態とグレーアウトを強制クリア
+                isInvertedState = false;
+                document.getElementById("formula-box").classList.remove("formula-grayout");
+                
                 currentMode = "DECOMPOSE"; 
                 inputStr = "";
             }
